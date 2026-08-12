@@ -67,11 +67,44 @@ export class AuthService {
     return { ...tokens, userId: user.id };
   }
 
-  private async issueTokens(userId: string, role: Role): Promise<TokenPair> {
+  async refresh(presentedToken: string): Promise<TokenPair> {
+    const tokenHash = hashToken(presentedToken);
+    const existing = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!existing || existing.revokedAt || existing.expiresAt < new Date()) {
+      throw new AppError("INVALID_SESSION", "Please sign in again", 401);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.update({
+        where: { id: existing.id },
+        data: { revokedAt: new Date() },
+      });
+
+      return this.issueTokens(existing.userId, existing.user.role, tx);
+    });
+  }
+
+  async logout(presentedToken: string): Promise<void> {
+    const tokenHash = hashToken(presentedToken);
+    await this.prisma.refreshToken.updateMany({
+      where: { tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  private async issueTokens(
+    userId: string,
+    role: Role,
+    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
+  ): Promise<TokenPair> {
     const accessToken = await this.jwtService.signAsync({ sub: userId, role });
 
     const refreshToken = generateToken();
-    await this.prisma.refreshToken.create({
+    await prisma.refreshToken.create({
       data: {
         userId,
         tokenHash: hashToken(refreshToken),
