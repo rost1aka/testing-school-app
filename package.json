@@ -7,5 +7,8 @@
     "dev": "pnpm --filter @school/api start:dev",
     "test": "pnpm --filter @school/shared test && pnpm --filter @school/api test && pnpm --filter @school/api test:e2e",
     "db:reset": "pnpm --filter @school/api db:reset"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma"]
   }
 }
