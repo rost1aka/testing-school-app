@@ -9,5 +9,5 @@ export function hashToken(token: string): string {
 }
 
 export function computeExpiry(ttlMinutes: number, now: Date = new Date()): Date {
-  return new Date(now.getTime() + ttlMinutes * 60 * 1000);
+  return new Date(now.getTime() + ttlMinutes * 60 * 60 * 1000);
 }

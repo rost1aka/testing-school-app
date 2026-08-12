@@ -54,7 +54,7 @@ export class UsersController {
   }
 
   @Get(":id")
-  getById(@CurrentUser() user: CurrentUserPayload, @Param("id") id: string): Promise<UserProfile> {
-    return this.usersService.getProfileById(user.id, id);
+  getById(@Param("id") id: string): Promise<UserProfile> {
+    return this.usersService.getProfile(id);
   }
 }

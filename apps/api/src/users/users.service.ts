@@ -39,13 +39,6 @@ export class UsersService {
     return this.toProfile(user);
   }
 
-  async getProfileById(requesterId: string, targetId: string): Promise<UserProfile> {
-    if (requesterId !== targetId) {
-      throw new AppError("FORBIDDEN", "You may only view your own profile", 403);
-    }
-    return this.getProfile(targetId);
-  }
-
   async updateProfile(userId: string, input: UpdateProfileInput): Promise<UserProfile> {
     const user = await this.prisma.user.update({
       where: { id: userId },

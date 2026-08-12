@@ -9,10 +9,6 @@ import { hashPassword, verifyPassword } from "../common/crypto.util";
 import { AppError } from "../common/error-response";
 import { PrismaService } from "../prisma/prisma.service";
 
-// Has no corresponding plaintext; only used so a lookup miss takes about as
-// long as a real password check.
-const DUMMY_PASSWORD_HASH = "$2b$10$wx8cn89V6DnzudWonhTMVe.q6he1G7vB3EmF7x18LyrsafFsfL5Ma";
-
 interface TokenPair {
   accessToken: string;
   refreshToken: string;
@@ -58,8 +54,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
 
     if (!user) {
-      await verifyPassword(input.password, DUMMY_PASSWORD_HASH);
-      throw new AppError("INVALID_CREDENTIALS", "Email or password is incorrect", 401);
+      throw new AppError("NO_SUCH_USER", "No account found for that email", 404);
     }
 
     const passwordValid = await verifyPassword(input.password, user.passwordHash);
@@ -129,7 +124,7 @@ export class AuthService {
     const tokenHash = hashToken(presentedToken);
     const existing = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
 
-    if (!existing || existing.usedAt || existing.expiresAt < new Date()) {
+    if (!existing || existing.expiresAt < new Date()) {
       throw new AppError("INVALID_TOKEN", "This reset link is no longer valid", 400);
     }
 
