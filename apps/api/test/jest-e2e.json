@@ -7,7 +7,7 @@
       "ts-jest",
       {
         "diagnostics": {
-          "exclude": ["**/*.e2e-spec.ts"]
+          "exclude": ["**/test/auth-register.e2e-spec.ts", "**/test/auth-login.e2e-spec.ts"]
         }
       }
     ]
