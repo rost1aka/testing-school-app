@@ -3,7 +3,14 @@
   "testEnvironment": "node",
   "testRegex": "test/.*\\.e2e-spec\\.ts$",
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        "diagnostics": {
+          "exclude": ["**/*.e2e-spec.ts"]
+        }
+      }
+    ]
   },
   "globalSetup": "<rootDir>/test/global-setup.ts"
 }
