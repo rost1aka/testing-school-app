@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Prisma, Role } from "@prisma/client";
 import { LoginInput, RegisterInput } from "@school/shared";
@@ -20,6 +20,8 @@ interface TokenPair {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -111,7 +113,16 @@ export class AuthService {
       },
     });
 
-    await this.mailService.sendPasswordReset(user.email, token);
+    // Deliberately not awaited: the SMTP round-trip (fresh connection, full
+    // EHLO/MAIL/RCPT/DATA/QUIT) takes far longer than the unknown-address
+    // path above, which returns after a single indexed lookup. Awaiting it
+    // here would let an attacker time this endpoint to tell known addresses
+    // apart from unknown ones. The token row is already committed by the
+    // time we respond, so callers can poll for the email; a delivery
+    // failure is logged rather than surfaced to the caller.
+    this.mailService.sendPasswordReset(user.email, token).catch((error) => {
+      this.logger.error("Failed to send password reset email", error);
+    });
   }
 
   async resetPassword(presentedToken: string, password: string): Promise<void> {

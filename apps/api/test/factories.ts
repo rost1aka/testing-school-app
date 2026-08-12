@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import request from "supertest";
 import { Role, User } from "@prisma/client";
 import { hashPassword } from "../src/common/crypto.util";
+import { settleMail } from "../src/mail/mail.service";
 import { PrismaService } from "../src/prisma/prisma.service";
 import { TestApp } from "./setup";
 
@@ -45,8 +46,15 @@ interface MaildevMessage {
   html?: string;
 }
 
-/** Deletes every message currently sitting in Maildev's mailbox. */
+/**
+ * Deletes every message currently sitting in Maildev's mailbox. Drains any
+ * fire-and-forget send still in flight from a previous request first —
+ * Maildev's own store can throw if a delete lands while it's mid-write for
+ * an incoming message, so this avoids racing it rather than depending on
+ * Maildev to handle that gracefully.
+ */
 export async function clearMail(): Promise<void> {
+  await settleMail();
   await fetch(`${MAILDEV_URL}/email/all`, { method: "DELETE" });
 }
 
