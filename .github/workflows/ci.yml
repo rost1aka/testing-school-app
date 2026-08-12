@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: school
+          POSTGRES_PASSWORD: school
+          POSTGRES_DB: school
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U school"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      maildev:
+        image: maildev/maildev:2.1.0
+        ports: ["1025:1025", "1080:1080"]
+        # The image's built-in HEALTHCHECK probes localhost over IPv6, but
+        # maildev only binds IPv4, so it reports "unhealthy" forever and
+        # Actions would wait on the service indefinitely. Disable it here,
+        # the same way docker-compose.yml disables it with
+        # `healthcheck: disable: true`.
+        options: --no-healthcheck
+    env:
+      DATABASE_URL: postgresql://school:school@localhost:5432/school
+      TEST_DATABASE_URL: postgresql://school:school@localhost:5432/school_test
+      JWT_SECRET: ci-secret
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The postgres service only creates the database named in
+      # POSTGRES_DB (school). Locally, docker-compose mounts
+      # docker/postgres-init.sql to also create school_test, but a service
+      # container here can't mount a file, so school_test doesn't exist
+      # yet. Create it explicitly, tolerating a second run.
+      - name: Create the test database
+        run: |
+          export PGPASSWORD=school
+          psql -h localhost -U school -d school -tAc \
+            "SELECT 1 FROM pg_database WHERE datname = 'school_test'" | grep -q 1 \
+            || psql -h localhost -U school -d school -c "CREATE DATABASE school_test"
+
+      # pnpm test runs @school/shared's unit suite, @school/api's unit
+      # suite, and @school/api's e2e suite, in that order (see the root
+      # package.json "test" script). The e2e suite's own globalSetup runs
+      # `prisma migrate deploy` against TEST_DATABASE_URL before the first
+      # test, so no separate migration step is needed here: nothing else
+      # in this job talks to a database.
+      - run: pnpm test
+
+  tests-changed:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # actions/checkout on a pull_request event only guarantees the PR's
+      # merge ref is present; on a fork PR, origin/<base_ref> is not
+      # necessarily a resolvable ref yet even with fetch-depth: 0. Fetch it
+      # explicitly so the merge-base lookup below is reliable.
+      - name: Fetch the PR base branch
+        run: git fetch --no-tags origin "+${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+
+      - name: Require a test change alongside any source change
+        run: |
+          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+          changed="$(git diff --name-only "$base" HEAD)"
+          if printf '%s\n' "$changed" | grep -qE '^apps/[^/]+/src/'; then
+            if ! printf '%s\n' "$changed" | grep -qE '\.(spec|test)\.tsx?$'; then
+              echo "::error::This PR changes application source under apps/*/src but doesn't add or update a matching *.spec.ts / *.test.ts / *.spec.tsx / *.test.tsx file. Add a test that fails before your fix and passes after it, then include that test file in this pull request."
+              exit 1
+            fi
+          fi
