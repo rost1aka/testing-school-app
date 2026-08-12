@@ -88,11 +88,14 @@ jobs:
 
       - name: Require a test change alongside any source change
         run: |
-          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)" || {
+            echo "::error::Could not compute a merge base with origin/${{ github.base_ref }}. This usually means the base branch wasn't fetched — check that checkout used fetch-depth: 0 and that the 'Fetch the PR base branch' step succeeded."
+            exit 1
+          }
           changed="$(git diff --name-only "$base" HEAD)"
-          if printf '%s\n' "$changed" | grep -qE '^apps/[^/]+/src/'; then
-            if ! printf '%s\n' "$changed" | grep -qE '\.(spec|test)\.tsx?$'; then
-              echo "::error::This PR changes application source under apps/*/src but doesn't add or update a matching *.spec.ts / *.test.ts / *.spec.tsx / *.test.tsx file. Add a test that fails before your fix and passes after it, then include that test file in this pull request."
+          if printf '%s\n' "$changed" | grep -qE '^(apps|packages)/[^/]+/src/'; then
+            if ! printf '%s\n' "$changed" | grep -qE '\.(spec|test|e2e-spec)\.tsx?$'; then
+              echo "::error::This PR changes application source under apps/*/src or packages/*/src but doesn't add or update a matching *.spec.ts / *.test.ts / *.e2e-spec.ts / *.spec.tsx / *.test.tsx / *.e2e-spec.tsx file. Add a test that fails before your fix and passes after it, then include that test file in this pull request."
               exit 1
             fi
           fi
