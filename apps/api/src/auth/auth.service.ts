@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Prisma, Role } from "@prisma/client";
 import { LoginInput, RegisterInput } from "@school/shared";
+import { MailService } from "../mail/mail.service";
 import { computeExpiry, generateToken, hashToken } from "../common/token.util";
 import { hashPassword, verifyPassword } from "../common/crypto.util";
 import { AppError } from "../common/error-response";
@@ -22,6 +23,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(input: RegisterInput): Promise<{ id: string } & TokenPair> {
@@ -93,6 +95,50 @@ export class AuthService {
     await this.prisma.refreshToken.updateMany({
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) return;
+
+    const token = generateToken();
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(token),
+        expiresAt: computeExpiry(15),
+      },
+    });
+
+    await this.mailService.sendPasswordReset(user.email, token);
+  }
+
+  async resetPassword(presentedToken: string, password: string): Promise<void> {
+    const tokenHash = hashToken(presentedToken);
+    const existing = await this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+
+    if (!existing || existing.usedAt || existing.expiresAt < new Date()) {
+      throw new AppError("INVALID_TOKEN", "This reset link is no longer valid", 400);
+    }
+
+    const passwordHash = await hashPassword(password);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: existing.userId },
+        data: { passwordHash },
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: existing.id },
+        data: { usedAt: new Date() },
+      });
+
+      await tx.refreshToken.updateMany({
+        where: { userId: existing.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
     });
   }
 

@@ -1,6 +1,15 @@
 import { Body, Controller, HttpCode, Post, Req, Res } from "@nestjs/common";
 import type { CookieOptions, Request, Response } from "express";
-import { loginSchema, LoginInput, registerSchema, RegisterInput } from "@school/shared";
+import {
+  forgotPasswordSchema,
+  ForgotPasswordInput,
+  loginSchema,
+  LoginInput,
+  registerSchema,
+  RegisterInput,
+  resetPasswordSchema,
+  ResetPasswordInput,
+} from "@school/shared";
 import { AppError } from "../common/error-response";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AuthService } from "./auth.service";
@@ -62,5 +71,21 @@ export class AuthController {
 
     res.clearCookie("access_token", COOKIE_OPTIONS);
     res.clearCookie("refresh_token", COOKIE_OPTIONS);
+  }
+
+  @Post("forgot-password")
+  @HttpCode(202)
+  async forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput,
+  ): Promise<void> {
+    await this.authService.requestPasswordReset(body.email);
+  }
+
+  @Post("reset-password")
+  @HttpCode(204)
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput,
+  ): Promise<void> {
+    await this.authService.resetPassword(body.token, body.password);
   }
 }
