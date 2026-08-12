@@ -24,3 +24,21 @@ dependencies.
 
 Maildev's web UI, for viewing emails sent by the app in development, is
 available at http://localhost:1080.
+
+## Seeded accounts
+
+After `pnpm db:reset`, the database contains these accounts, all with the
+password `Password123!`:
+
+- `student@example.com`
+- `admin@example.com`
+- `dana@example.com`
+
+## Documentation
+
+- [`docs/spec.md`](docs/spec.md) — the product specification. Defines what
+  the application is supposed to do.
+- [`docs/testing-guide.md`](docs/testing-guide.md) — what each test level is
+  for, the exact commands to run them, and how to read a test failure.
+- [`docs/workflow.md`](docs/workflow.md) — the loop for finding a defect,
+  writing the test that catches it, fixing it, and opening a pull request.
