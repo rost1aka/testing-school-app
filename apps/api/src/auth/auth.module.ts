@@ -15,6 +15,9 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],
-  exports: [JwtAuthGuard],
+  // JwtModule is re-exported alongside the guard: JwtAuthGuard depends on
+  // JwtService, and a module that imports AuthModule only to use
+  // `@UseGuards(JwtAuthGuard)` needs that dependency resolvable too.
+  exports: [JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}
