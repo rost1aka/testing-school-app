@@ -1,11 +1,12 @@
 # Testing guide
 
-This project has two levels of automated tests, both run under Jest: unit
-tests and API integration tests. This guide covers what each is for, the
-exact commands to run them, how to read a validation failure, and how to
-recognise a test that passes without actually proving anything.
+This project has four levels of automated tests: unit tests and API
+integration tests, both run under Jest; component tests, run under Vitest;
+and browser tests, run under Playwright. This guide covers what each is
+for, the exact commands to run them, how to read a validation failure, and
+how to recognise a test that passes without actually proving anything.
 
-## The two levels
+## The four levels
 
 ### Unit tests
 
@@ -84,11 +85,53 @@ field failed. A test asserting on a validation failure should assert on
 the specific key and message in `fieldErrors`, not just on the status code
 — the status code alone doesn't tell you which field, or why.
 
-### What's next
+### Component tests
 
-More levels — component tests for rendering and interaction, and
-browser-driven end-to-end tests for flows spanning more than one page —
-arrive once the web interface exists to test.
+Component tests exercise a single React component in isolation: rendering,
+user interaction, and how per-field errors are displayed — with no server
+behind it. They live in `apps/web/tests/` as `*.test.tsx` and run under
+Vitest with Testing Library. Reach for a component test when the thing
+you're checking is how a piece of UI renders or responds to interaction —
+a field showing its error message, a button disabling itself while a
+submission is in flight, a form clearing after a successful save. Query
+elements the way a user or assistive technology would: by label and by
+role, not by test id — a query that only passes because of a `data-testid`
+attribute doesn't tell you whether the markup is actually usable.
+
+Run the whole component suite:
+
+```bash
+pnpm --filter @school/web test
+```
+
+### Browser tests
+
+Browser tests drive a real browser against the running application. They
+live in `e2e/` as `*.spec.ts` and run under Playwright. Reach for a
+browser test when the behaviour you're checking only exists once a real
+browser is involved — a flow that spans more than one page, a redirect
+back to the page that required sign-in, a cookie surviving navigation.
+Assertions should be web-first — `expect(locator).toBeVisible()`,
+`expect(page).toHaveURL(...)` and similar, which retry until they pass or
+time out — rather than a fixed `sleep`, which either wastes time waiting
+for something that already happened or races something that hasn't.
+
+The browser suite needs both servers running in separate terminals before
+you run it:
+
+```bash
+pnpm dev
+```
+
+```bash
+pnpm --filter @school/web dev
+```
+
+Then run the suite:
+
+```bash
+pnpm --filter @school/e2e test
+```
 
 ## Tests that pass without proving anything
 

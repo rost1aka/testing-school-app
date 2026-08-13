@@ -45,6 +45,15 @@ Start the API in watch mode:
 pnpm dev
 ```
 
+Start the web app's dev server, in a separate terminal:
+
+```bash
+pnpm --filter @school/web dev
+```
+
+The web app runs at http://localhost:3000 and requires the API to be
+running to do anything useful.
+
 ## 2. Read the spec
 
 Read `docs/spec.md`. It is the oracle for this project: every clause
@@ -58,8 +67,9 @@ looks intentional.
 pnpm test
 ```
 
-This runs the shared package's unit tests, the API's unit tests, and the
-API's integration tests, in that order. It should pass. A passing suite is
+This runs the shared package's unit tests, the API's unit tests, the API's
+integration tests, the web app's component tests, and the browser suite,
+in that order. It should pass. A passing suite is
 your baseline — it means that, as far as the existing tests can tell, the
 clauses in `docs/spec.md` hold. Your job is to find a place where they
 don't, and where no existing test would catch it.

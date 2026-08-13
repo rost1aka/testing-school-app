@@ -1,7 +1,7 @@
 # School App
 
-A monorepo for a school management application: a NestJS API and (later) a
-Next.js web app, managed as a pnpm workspace.
+A monorepo for a school management application: a NestJS API and a Next.js
+web app, managed as a pnpm workspace.
 
 ## Prerequisites
 
@@ -28,6 +28,26 @@ The API reads `apps/api/.env` — and only that file — for `DATABASE_URL`,
 explicitly by the API, the seed script and the integration suite, so the path
 above matters: a `.env` at the repository root is not read by anything. Real
 environment variables always win over the file, so CI can export them instead.
+
+## Running the app
+
+Start the API:
+
+```bash
+pnpm dev
+```
+
+The API listens on http://localhost:4000.
+
+Start the web app, in a separate terminal:
+
+```bash
+pnpm --filter @school/web dev
+```
+
+The web app runs at http://localhost:3000. It calls the API to do
+anything useful — sign in, register, load or edit a profile — so the API
+must be running first.
 
 ## Development services
 
