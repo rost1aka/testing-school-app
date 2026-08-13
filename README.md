@@ -18,7 +18,10 @@ pnpm install
 ```
 
 This starts local Postgres and Maildev services and installs workspace
-dependencies.
+dependencies. `pnpm install` also generates the Prisma client from
+`apps/api/prisma/schema.prisma` (the API's `postinstall` script) — without it,
+`@prisma/client` exports no models and nothing that touches the database will
+compile, so re-run `pnpm install` after changing the schema.
 
 The API reads `apps/api/.env` — and only that file — for `DATABASE_URL`,
 `TEST_DATABASE_URL`, `JWT_SECRET` and the SMTP settings. It is loaded

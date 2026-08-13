@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
+    "postinstall": "prisma generate",
     "start": "tsx src/main.ts",
     "start:dev": "tsx watch src/main.ts",
     "test": "jest",
