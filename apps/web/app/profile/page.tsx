@@ -9,7 +9,14 @@ export default function ProfilePage() {
     <main className="p-8">
       <h1 className="text-2xl font-bold mb-4">Profile</h1>
       <Suspense fallback={<p>Loading…</p>}>
-        <RequireAuth>{(profile) => <ProfileForm profile={profile} />}</RequireAuth>
+        <RequireAuth>
+          {(profile) => (
+            <div>
+              <p className="mb-4 text-sm text-gray-600">{profile.email}</p>
+              <ProfileForm profile={profile} />
+            </div>
+          )}
+        </RequireAuth>
       </Suspense>
     </main>
   );

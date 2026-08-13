@@ -5,7 +5,7 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "pnpm --filter @school/api start:dev",
-    "test": "pnpm --filter @school/shared test && pnpm --filter @school/api test && pnpm --filter @school/api test:e2e && pnpm --filter @school/web test",
+    "test": "pnpm --filter @school/shared test && pnpm --filter @school/api test && pnpm --filter @school/api test:e2e && pnpm --filter @school/web test && pnpm --filter @school/e2e test",
     "db:reset": "pnpm --filter @school/api db:reset"
   },
   "pnpm": {
