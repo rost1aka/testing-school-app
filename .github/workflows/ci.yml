@@ -218,9 +218,15 @@ jobs:
             exit 1
           }
           changed="$(git diff --name-only "$base" HEAD)"
-          if printf '%s\n' "$changed" | grep -qE '^(apps|packages)/[^/]+/src/'; then
+          # Not every package keeps its source under src/. apps/api and
+          # packages/shared do, but apps/web is a Next.js app whose code
+          # lives in app/, components/ and lib/, and the browser suite is
+          # its own top-level e2e/ package. Matching src/ alone let a
+          # change to any web component, or to a browser spec, through the
+          # one gate whose whole purpose is to require the test first.
+          if printf '%s\n' "$changed" | grep -qE '^(apps|packages)/[^/]+/(src|app|components|lib)/|^e2e/'; then
             if ! printf '%s\n' "$changed" | grep -qE '\.(spec|test|e2e-spec)\.tsx?$'; then
-              echo "::error::This PR changes application source under apps/*/src or packages/*/src but doesn't add or update a matching *.spec.ts / *.test.ts / *.e2e-spec.ts / *.spec.tsx / *.test.tsx / *.e2e-spec.tsx file. Add a test that fails before your fix and passes after it, then include that test file in this pull request."
+              echo "::error::This PR changes application source under apps/*/ or packages/*/ (src, app, components or lib) or under e2e/, but doesn't add or update a matching *.spec.ts / *.test.ts / *.e2e-spec.ts / *.spec.tsx / *.test.tsx / *.e2e-spec.tsx file. Add a test that fails before your fix and passes after it, then include that test file in this pull request."
               exit 1
             fi
           fi
