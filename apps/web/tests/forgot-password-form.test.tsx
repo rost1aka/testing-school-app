@@ -24,6 +24,7 @@ describe("ForgotPasswordForm", () => {
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(fetchMock.mock.calls[0][0]).toContain("/auth/forgot-password");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ email: "sam@example.com" });
     expect(
       await screen.findByText("If that address is registered, a reset link is on its way."),
@@ -41,5 +42,14 @@ describe("ForgotPasswordForm", () => {
     await waitFor(() =>
       expect(screen.getByText("If that address is registered, a reset link is on its way.")).toBeInTheDocument(),
     );
+  });
+
+  it("shows a retry message instead of the confirmation when the request never reaches the server", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    render(<ForgotPasswordForm />);
+    await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong. Please try again.");
+    expect(screen.queryByText("If that address is registered, a reset link is on its way.")).not.toBeInTheDocument();
   });
 });
