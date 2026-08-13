@@ -1,3 +1,8 @@
+// Must come first: PrismaClient reads DATABASE_URL as it is constructed, and
+// `pnpm db:reset` runs this file as its own process, so it needs apps/api/.env
+// loaded here rather than relying on the Prisma CLI having loaded it earlier.
+import "../src/common/load-env";
+
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/common/crypto.util";
 

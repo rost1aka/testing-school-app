@@ -11,6 +11,16 @@ git clone <your-fork-url>
 cd school-app
 ```
 
+Create the API's environment file from the checked-in example:
+
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+
+`apps/api/.env` is the only environment file the project reads. The API, the
+seed script and the integration suite each load that exact path explicitly, so
+a `.env` anywhere else — the repository root, for instance — has no effect.
+
 Start the local services (Postgres and Maildev):
 
 ```bash

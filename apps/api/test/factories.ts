@@ -38,7 +38,10 @@ export async function loginAs(
 const MAILDEV_URL = process.env.MAILDEV_URL ?? "http://localhost:1080";
 const RESET_TOKEN_PATTERN = /[?&]token=([0-9a-f]+)/;
 const POLL_INTERVAL_MS = 100;
-const POLL_TIMEOUT_MS = 5000;
+// Comfortably below the suite's testTimeout (see test/jest-e2e.json) so a
+// mail that never arrives fails with the diagnostic below rather than with
+// Jest's generic "exceeded timeout" message.
+const POLL_TIMEOUT_MS = 3000;
 
 interface MaildevMessage {
   time: string;

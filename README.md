@@ -12,13 +12,19 @@ Next.js web app, managed as a pnpm workspace.
 ## Setup
 
 ```bash
-cp .env.example .env
+cp apps/api/.env.example apps/api/.env
 docker compose up -d
 pnpm install
 ```
 
 This starts local Postgres and Maildev services and installs workspace
 dependencies.
+
+The API reads `apps/api/.env` — and only that file — for `DATABASE_URL`,
+`TEST_DATABASE_URL`, `JWT_SECRET` and the SMTP settings. It is loaded
+explicitly by the API, the seed script and the integration suite, so the path
+above matters: a `.env` at the repository root is not read by anything. Real
+environment variables always win over the file, so CI can export them instead.
 
 ## Development services
 

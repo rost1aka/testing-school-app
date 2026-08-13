@@ -1,8 +1,25 @@
 import { Injectable } from "@nestjs/common";
-import { Address, Role, User } from "@prisma/client";
+import { Address, Prisma, Role, User } from "@prisma/client";
 import { AddressInput, UpdateProfileInput } from "@school/shared";
 import { AppError } from "../common/error-response";
 import { PrismaService } from "../prisma/prisma.service";
+
+/**
+ * Prisma raises P2025 ("an operation failed because it depends on one or more
+ * records that were required but not found") when the row a write targets has
+ * disappeared. For an address write that can only mean the row was deleted
+ * between the ownership check in `updateAddress`/`deleteAddress` and the write
+ * that follows it — a concurrent delete by the same user. The caller lost that
+ * race, so the address is no
+ * longer theirs to modify: answer exactly as the ownership check would,
+ * rather than leaking a 500 INTERNAL_ERROR for an ordinary interleaving.
+ */
+function toAddressOwnershipError(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    return new AppError("FORBIDDEN", "You may only modify your own addresses", 403);
+  }
+  return error;
+}
 
 export interface UserProfile {
   id: string;
@@ -91,7 +108,11 @@ export class UsersService {
         });
       }
 
-      return tx.address.update({ where: { id: addressId }, data: input });
+      try {
+        return await tx.address.update({ where: { id: addressId }, data: input });
+      } catch (error) {
+        throw toAddressOwnershipError(error);
+      }
     });
   }
 
@@ -100,7 +121,12 @@ export class UsersService {
     if (!existing || existing.userId !== userId) {
       throw new AppError("FORBIDDEN", "You may only modify your own addresses", 403);
     }
-    await this.prisma.address.delete({ where: { id: addressId } });
+
+    try {
+      await this.prisma.address.delete({ where: { id: addressId } });
+    } catch (error) {
+      throw toAddressOwnershipError(error);
+    }
   }
 
   private async findUserOrThrow(userId: string): Promise<User> {

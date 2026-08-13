@@ -21,6 +21,25 @@ const COOKIE_OPTIONS: CookieOptions = {
   secure: false,
 };
 
+// AUTH-03: "an access token valid for 15 minutes and a refresh token valid for
+// 30 days". Without an explicit maxAge both cookies are *session* cookies —
+// the browser drops them when it closes, and the documented lifetimes are not
+// observable in the response at all. These are plain constants on purpose:
+// they describe the cookie the client is told to keep, and must not be tangled
+// up with how the server computes a token's own expiry.
+const ACCESS_TOKEN_COOKIE_MAX_AGE_MS = 15 * 60 * 1000;
+const REFRESH_TOKEN_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const ACCESS_COOKIE_OPTIONS: CookieOptions = {
+  ...COOKIE_OPTIONS,
+  maxAge: ACCESS_TOKEN_COOKIE_MAX_AGE_MS,
+};
+
+const REFRESH_COOKIE_OPTIONS: CookieOptions = {
+  ...COOKIE_OPTIONS,
+  maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS,
+};
+
 @Controller("auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -32,8 +51,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ id: string }> {
     const { id, accessToken, refreshToken } = await this.authService.register(body);
-    res.cookie("access_token", accessToken, COOKIE_OPTIONS);
-    res.cookie("refresh_token", refreshToken, COOKIE_OPTIONS);
+    res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
     return { id };
   }
 
@@ -44,8 +63,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     const { accessToken, refreshToken } = await this.authService.login(body);
-    res.cookie("access_token", accessToken, COOKIE_OPTIONS);
-    res.cookie("refresh_token", refreshToken, COOKIE_OPTIONS);
+    res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
   }
 
   @Post("refresh")
@@ -57,8 +76,8 @@ export class AuthController {
     }
 
     const { accessToken, refreshToken } = await this.authService.refresh(presentedToken);
-    res.cookie("access_token", accessToken, COOKIE_OPTIONS);
-    res.cookie("refresh_token", refreshToken, COOKIE_OPTIONS);
+    res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
+    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
   }
 
   @Post("logout")

@@ -1,3 +1,8 @@
+// Must come first: modules imported below read process.env while they are
+// being evaluated (AuthModule reads JWT_SECRET, PrismaService reads
+// DATABASE_URL), so the .env file has to be in place before any of them load.
+import "./common/load-env";
+
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";

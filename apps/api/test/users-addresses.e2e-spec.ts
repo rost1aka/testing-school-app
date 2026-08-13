@@ -56,7 +56,7 @@ describe("addresses", () => {
       .set("Cookie", cookies)
       .send(homeAddress)
       .expect(201);
-    await request(app.server)
+    const second = await request(app.server)
       .post("/users/me/addresses")
       .set("Cookie", cookies)
       .send({ ...workAddress, isDefault: true })
@@ -64,7 +64,13 @@ describe("addresses", () => {
 
     const res = await request(app.server).get("/users/me/addresses").set("Cookie", cookies).expect(200);
     const updatedFirst = res.body.find((address: { id: string }) => address.id === first.body.id);
+    const updatedSecond = res.body.find((address: { id: string }) => address.id === second.body.id);
     expect(updatedFirst.isDefault).toBe(false);
+    // USER-04: "at most one default address" is only half the clause. Asserting
+    // the demotion alone would still pass if the new address never became the
+    // default either, leaving the user with none.
+    expect(updatedSecond.isDefault).toBe(true);
+    expect(res.body.filter((address: { isDefault: boolean }) => address.isDefault)).toHaveLength(1);
   });
 
   it("refuses to update an address you do not own", async () => {
