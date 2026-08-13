@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -50,6 +50,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Install Playwright's browser and OS dependencies
+        run: pnpm --filter @school/e2e exec playwright install --with-deps chromium
+
       # The postgres service only creates the database named in
       # POSTGRES_DB (school). Locally, docker-compose mounts
       # docker/postgres-init.sql to also create school_test, but a service
@@ -62,13 +65,107 @@ jobs:
             "SELECT 1 FROM pg_database WHERE datname = 'school_test'" | grep -q 1 \
             || psql -h localhost -U school -d school -c "CREATE DATABASE school_test"
 
+      # The browser suite (run by `pnpm test`, below) drives the API and web
+      # servers started further down, and those read DATABASE_URL — the
+      # `school` database, not `school_test`. Reset and seed it now so
+      # student@example.com and friends exist before those servers start.
+      # This is a separate database from the one the API's own integration
+      # suite uses: that suite points itself at TEST_DATABASE_URL and
+      # manages its own migrations in test/global-setup.ts.
+      - name: Seed the database for the browser suite
+        run: pnpm --filter @school/api db:reset
+
+      # Next.js inlines NEXT_PUBLIC_* variables into the client bundle at
+      # build time, so this has to be set here, on the build step, not on
+      # the start step below — setting it only when starting the server
+      # would be too late for the browser-side code that reads it.
+      - name: Build the web app
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+        run: pnpm --filter @school/web build
+
+      # @school/api builds with `nest build` and starts with `nest start`;
+      # `nest start` compiles the project itself before running it (through
+      # the real TypeScript compiler, so decorator metadata is emitted —
+      # see the boot job below for why that distinction matters) and does
+      # not need a separate build step here. @school/web already has its
+      # production build from the step above, so `next start` just serves
+      # it. Both run in the background so the next step can poll them and
+      # this job can go on to start the other.
+      - name: Start the API and the web app
+        run: |
+          pnpm --filter @school/api start > /tmp/api.log 2>&1 &
+          pnpm --filter @school/web start > /tmp/web.log 2>&1 &
+
+      # Poll rather than sleep a fixed amount: a fixed sleep either wastes
+      # time once the servers are already up, or races them and fails
+      # flakily when they're a little slow to start.
+      - name: Wait for the API and the web app to respond
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:4000/health >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:4000/health >/dev/null \
+            || { echo "::error::API did not start"; cat /tmp/api.log; exit 1; }
+
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000 >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3000 >/dev/null \
+            || { echo "::error::Web app did not start"; cat /tmp/web.log; exit 1; }
+
       # pnpm test runs @school/shared's unit suite, @school/api's unit
-      # suite, and @school/api's e2e suite, in that order (see the root
-      # package.json "test" script). The e2e suite's own globalSetup runs
-      # `prisma migrate deploy` against TEST_DATABASE_URL before the first
-      # test, so no separate migration step is needed here: nothing else
-      # in this job talks to a database.
+      # suite, @school/api's integration suite, @school/web's component
+      # suite, and @school/e2e's browser suite, in that order (see the root
+      # package.json "test" script). The integration suite's own
+      # globalSetup runs `prisma migrate deploy` against TEST_DATABASE_URL
+      # before its first test, so no separate migration step is needed for
+      # it here. The browser suite instead drives the API and web servers
+      # started above, over the `school` database seeded above.
       - run: pnpm test
+
+  boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: school, POSTGRES_PASSWORD: school, POSTGRES_DB: school }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U school"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://school:school@localhost:5432/school
+      JWT_SECRET: ci-secret
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.3 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @school/api exec prisma migrate deploy
+      - run: pnpm --filter @school/api build
+      - name: Boot the compiled API and exercise an injected route
+        run: |
+          pnpm --filter @school/api start &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:4000/health >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:4000/health >/dev/null || { echo "::error::API did not start"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:4000/auth/login \
+            -H 'Content-Type: application/json' -d '{"email":"nobody@example.com","password":"x"}')
+          if [ "$code" = "500" ]; then
+            echo "::error::A route that uses an injected service returned 500 — dependency injection is broken in the start path."
+            exit 1
+          fi
 
   tests-changed:
     if: github.event_name == 'pull_request'
