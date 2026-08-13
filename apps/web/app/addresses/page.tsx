@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { AddressForm } from "../../components/AddressForm";
 import { AddressList } from "../../components/AddressList";
 import { FormErrors } from "../../components/FormErrors";
@@ -22,6 +22,7 @@ export default function AddressesPage() {
 function AddressesPanel() {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const reloadSeq = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,11 +40,14 @@ function AddressesPanel() {
   }, []);
 
   async function reload() {
+    const seq = ++reloadSeq.current;
     try {
       const data = await apiFetch<Address[]>("/users/me/addresses");
+      if (seq !== reloadSeq.current) return;
       setAddresses(data);
       setMessage(null);
     } catch (error) {
+      if (seq !== reloadSeq.current) return;
       setMessage(error instanceof ApiError ? error.message : "Something went wrong");
     }
   }
