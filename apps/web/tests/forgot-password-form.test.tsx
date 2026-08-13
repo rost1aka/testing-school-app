@@ -44,6 +44,24 @@ describe("ForgotPasswordForm", () => {
     );
   });
 
+  it("shows the field error instead of the confirmation when the address is not a valid email", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse(400, {
+          code: "VALIDATION_FAILED",
+          message: "Check the highlighted fields",
+          fieldErrors: { email: ["Enter a valid email address"] },
+        }),
+      ),
+    );
+    render(<ForgotPasswordForm />);
+    await userEvent.type(screen.getByLabelText("Email address"), "sam@");
+    await userEvent.click(screen.getByRole("button", { name: "Send reset link" }));
+    expect(await screen.findByText("Enter a valid email address")).toBeInTheDocument();
+    expect(screen.queryByText("If that address is registered, a reset link is on its way.")).not.toBeInTheDocument();
+  });
+
   it("shows a retry message instead of the confirmation when the request never reaches the server", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
     render(<ForgotPasswordForm />);
