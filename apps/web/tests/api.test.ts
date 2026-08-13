@@ -58,4 +58,25 @@ describe("apiFetch", () => {
 
     await expect(apiFetch("/auth/logout", { method: "POST" })).resolves.toBeUndefined();
   });
+
+  it("sends caller-supplied plain-object headers alongside the default Content-Type", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: "usr_1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiFetch("/users/me", { headers: { "X-Custom": "value" } });
+
+    const sentHeaders = new Headers(fetchMock.mock.calls[0][1].headers);
+    expect(sentHeaders.get("x-custom")).toBe("value");
+    expect(sentHeaders.get("content-type")).toBe("application/json");
+  });
+
+  it("lets a caller-supplied Headers instance override the default Content-Type", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { id: "usr_1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiFetch("/users/me", { headers: new Headers({ "Content-Type": "text/plain" }) });
+
+    const sentHeaders = new Headers(fetchMock.mock.calls[0][1].headers);
+    expect(sentHeaders.get("content-type")).toBe("text/plain");
+  });
 });

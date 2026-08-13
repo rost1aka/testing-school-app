@@ -14,10 +14,13 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  new Headers(init.headers ?? {}).forEach((value, key) => headers.set(key, value));
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+    headers,
   });
 
   let body: unknown;
