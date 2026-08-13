@@ -29,17 +29,24 @@ export function AddressList({ addresses, onDeleted }: { addresses: Address[]; on
   return (
     <>
       <FormErrors message={message} />
-      <ul>
+      <ul className="space-y-2">
         {addresses.map((address) => (
-          <li key={address.id} className="mb-2 flex items-center gap-2">
-            <span>{address.label}</span>
-            <span>{address.city}</span>
-            {address.isDefault && <span>Default</span>}
+          <li
+            key={address.id}
+            className="flex items-center gap-3 rounded-card border border-border bg-surface px-4 py-3 shadow-card"
+          >
+            <span className="font-medium text-text">{address.label}</span>
+            <span className="text-text-muted">{address.city}</span>
+            {address.isDefault && (
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                Default
+              </span>
+            )}
             <button
               type="button"
               disabled={deletingId === address.id}
               onClick={() => onDelete(address.id)}
-              className="border rounded px-2 py-1"
+              className="ml-auto inline-flex items-center justify-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Delete
             </button>

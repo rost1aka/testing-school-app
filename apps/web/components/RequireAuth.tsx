@@ -42,7 +42,7 @@ export function RequireAuth({ children }: { children: (profile: UserProfile) => 
     };
   }, []);
 
-  if (loading) return <p>Loading…</p>;
+  if (loading) return <p className="text-sm text-text-muted">Loading…</p>;
   if (message) return <FormErrors message={message} />;
   if (!profile) return null;
   return <>{children(profile)}</>;

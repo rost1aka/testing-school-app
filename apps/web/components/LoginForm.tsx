@@ -36,11 +36,15 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate className="rounded-card border border-border bg-surface p-4 shadow-card">
       <FormErrors message={message} />
       <Field id="email" label="Email address" type="email" value={email} onChange={setEmail} errors={fieldErrors.email} autoComplete="email" />
       <Field id="password" label="Password" type="password" value={password} onChange={setPassword} errors={fieldErrors.password} autoComplete="current-password" />
-      <button type="submit" disabled={submitting} className="border rounded px-3 py-1">
+      <button
+        type="submit"
+        disabled={submitting}
+        className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      >
         {submitting ? "Signing in…" : "Sign in"}
       </button>
     </form>

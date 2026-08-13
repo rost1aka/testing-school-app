@@ -33,7 +33,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate className="rounded-card border border-border bg-surface p-4 shadow-card">
       <FormErrors message={message} />
       <Field
         id="password"
@@ -43,7 +43,11 @@ export function ResetPasswordForm() {
         onChange={setPassword}
         autoComplete="new-password"
       />
-      <button type="submit" disabled={submitting} className="border rounded px-3 py-1">
+      <button
+        type="submit"
+        disabled={submitting}
+        className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      >
         {submitting ? "Setting…" : "Set new password"}
       </button>
     </form>

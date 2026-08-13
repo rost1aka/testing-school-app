@@ -6,13 +6,13 @@ import { RequireAuth } from "../../components/RequireAuth";
 
 export default function ProfilePage() {
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Profile</h1>
-      <Suspense fallback={<p>Loading…</p>}>
+    <main className="mx-auto max-w-xl px-6 py-10">
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-text">Profile</h1>
+      <Suspense fallback={<p className="text-sm text-text-muted">Loading…</p>}>
         <RequireAuth>
           {(profile) => (
             <div>
-              <p className="mb-4 text-sm text-gray-600">{profile.email}</p>
+              <p className="mb-4 text-sm text-text-muted">{profile.email}</p>
               <ProfileForm profile={profile} />
             </div>
           )}

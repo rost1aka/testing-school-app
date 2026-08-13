@@ -10,9 +10,9 @@ import type { Address } from "../../lib/types";
 
 export default function AddressesPage() {
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold mb-4">Addresses</h1>
-      <Suspense fallback={<p>Loading…</p>}>
+    <main className="mx-auto max-w-xl px-6 py-10">
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-text">Addresses</h1>
+      <Suspense fallback={<p className="text-sm text-text-muted">Loading…</p>}>
         <RequireAuth>{() => <AddressesPanel />}</RequireAuth>
       </Suspense>
     </main>
@@ -54,7 +54,7 @@ function AddressesPanel() {
 
   if (!addresses) {
     if (message) return <FormErrors message={message} />;
-    return <p>Loading…</p>;
+    return <p className="text-sm text-text-muted">Loading…</p>;
   }
 
   return (
