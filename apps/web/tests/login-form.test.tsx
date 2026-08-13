@@ -57,5 +57,6 @@ describe("LoginForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     expect(screen.getByRole("button", { name: "Signing in…" })).toBeDisabled();
     release(jsonResponse(200, {}));
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
   });
 });
