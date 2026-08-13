@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch, ApiError } from "../lib/api";
 import type { FieldErrors } from "../lib/types";
@@ -9,7 +9,6 @@ import { FormErrors } from "./FormErrors";
 
 export function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -23,7 +22,7 @@ export function LoginForm() {
     setFieldErrors({});
     try {
       await apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
-      router.push(searchParams.get("returnTo") ?? "/");
+      router.push("/");
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
