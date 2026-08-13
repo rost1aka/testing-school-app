@@ -38,16 +38,26 @@ function AddressesPanel() {
     };
   }, []);
 
-  if (message) return <FormErrors message={message} />;
-  if (!addresses) return <p>Loading…</p>;
+  async function reload() {
+    try {
+      const data = await apiFetch<Address[]>("/users/me/addresses");
+      setAddresses(data);
+      setMessage(null);
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "Something went wrong");
+    }
+  }
+
+  if (!addresses) {
+    if (message) return <FormErrors message={message} />;
+    return <p>Loading…</p>;
+  }
 
   return (
     <>
-      <AddressForm onCreated={(address) => setAddresses((prev) => [...(prev ?? []), address])} />
-      <AddressList
-        addresses={addresses}
-        onDeleted={(id) => setAddresses((prev) => (prev ?? []).filter((a) => a.id !== id))}
-      />
+      <FormErrors message={message} />
+      <AddressForm onCreated={() => { void reload(); }} />
+      <AddressList addresses={addresses} onDeleted={() => { void reload(); }} />
     </>
   );
 }
