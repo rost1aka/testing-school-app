@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "scripts": {
     "postinstall": "prisma generate",
-    "start": "tsx src/main.ts",
-    "start:dev": "tsx watch src/main.ts",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
-    "db:reset": "prisma migrate reset --force --skip-generate && tsx prisma/seed.ts"
+    "db:reset": "prisma migrate reset --force --skip-generate && tsx prisma/seed.ts",
+    "build": "nest build"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.29",
@@ -37,6 +38,7 @@
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.12",
     "tsx": "^4.23.12",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@nestjs/cli": "^11.0.10"
   }
 }
