@@ -69,7 +69,10 @@ pnpm test
 
 This runs the shared package's unit tests, the API's unit tests, the API's
 integration tests, the web app's component tests, and the browser suite,
-in that order. It should pass. A passing suite is
+in that order. Because it ends with the browser suite, this run and every
+later one — the red commit in step 6 and the green one in step 7 included
+— need the API up on port 4000, the web app on port 3000, and a seeded
+database (`pnpm db:reset`). It should pass. A passing suite is
 your baseline — it means that, as far as the existing tests can tell, the
 clauses in `docs/spec.md` hold. Your job is to find a place where they
 don't, and where no existing test would catch it.

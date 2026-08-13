@@ -12,3 +12,4 @@
 
 - [ ] The failing test was committed before the fix
 - [ ] `pnpm test` passes locally
+- [ ] That run had the API on port 4000, the web app on port 3000, and a seeded database (`pnpm db:reset`) — the browser suite needs all three

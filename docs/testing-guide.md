@@ -116,8 +116,14 @@ Assertions should be web-first — `expect(locator).toBeVisible()`,
 time out — rather than a fixed `sleep`, which either wastes time waiting
 for something that already happened or races something that hasn't.
 
-The browser suite needs both servers running in separate terminals before
-you run it:
+The browser suite drives the real application rather than a mock, so
+before you run it the API must be up on port 4000, the web app on port
+3000, and the database must hold its seeded data — start each server in
+its own terminal and seed the database first:
+
+```bash
+pnpm db:reset
+```
 
 ```bash
 pnpm dev
