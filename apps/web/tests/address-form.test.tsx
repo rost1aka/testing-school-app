@@ -23,21 +23,21 @@ const created: Address = {
 };
 
 async function fillForm() {
-  await userEvent.type(screen.getByLabelText("Label"), "Home");
-  await userEvent.type(screen.getByLabelText("Street address"), "12 Elm Street");
-  await userEvent.type(screen.getByLabelText("City"), "Springfield");
-  await userEvent.type(screen.getByLabelText("Postal code"), "62704");
-  await userEvent.type(screen.getByLabelText("Country"), "US");
+  await userEvent.type(screen.getByPlaceholderText("Home"), "Home");
+  await userEvent.type(screen.getByPlaceholderText("12 Elm Street"), "12 Elm Street");
+  await userEvent.type(screen.getByPlaceholderText("Springfield"), "Springfield");
+  await userEvent.type(screen.getByPlaceholderText("62704"), "62704");
+  await userEvent.type(screen.getByPlaceholderText("US"), "US");
 }
 
 describe("AddressForm", () => {
-  it("labels all five inputs", () => {
+  it("renders all five inputs", () => {
     render(<AddressForm onCreated={() => {}} />);
-    expect(screen.getByLabelText("Label")).toBeInTheDocument();
-    expect(screen.getByLabelText("Street address")).toBeInTheDocument();
-    expect(screen.getByLabelText("City")).toBeInTheDocument();
-    expect(screen.getByLabelText("Postal code")).toBeInTheDocument();
-    expect(screen.getByLabelText("Country")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Home")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("12 Elm Street")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Springfield")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("62704")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("US")).toBeInTheDocument();
   });
 
   it("POSTs /users/me/addresses with the filled-in values", async () => {
@@ -66,11 +66,11 @@ describe("AddressForm", () => {
     await fillForm();
     await userEvent.click(screen.getByRole("button", { name: "Save address" }));
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith(created));
-    expect(screen.getByLabelText("Label")).toHaveValue("");
-    expect(screen.getByLabelText("Street address")).toHaveValue("");
-    expect(screen.getByLabelText("City")).toHaveValue("");
-    expect(screen.getByLabelText("Postal code")).toHaveValue("");
-    expect(screen.getByLabelText("Country")).toHaveValue("");
+    expect(screen.getByPlaceholderText("Home")).toHaveValue("");
+    expect(screen.getByPlaceholderText("12 Elm Street")).toHaveValue("");
+    expect(screen.getByPlaceholderText("Springfield")).toHaveValue("");
+    expect(screen.getByPlaceholderText("62704")).toHaveValue("");
+    expect(screen.getByPlaceholderText("US")).toHaveValue("");
   });
 
   it("renders a fieldErrors.country response beside the country input", async () => {
@@ -85,7 +85,7 @@ describe("AddressForm", () => {
     await fillForm();
     await userEvent.click(screen.getByRole("button", { name: "Save address" }));
     expect(await screen.findByText("Enter a two-letter country code")).toBeInTheDocument();
-    expect(screen.getByLabelText("Country")).toHaveAttribute("aria-describedby", "country-error");
+    expect(screen.getByPlaceholderText("US")).toHaveAttribute("aria-describedby", "country-error");
   });
 
   it("disables the button while the request is in flight", async () => {

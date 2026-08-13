@@ -47,7 +47,7 @@ export function AddressForm({ onCreated }: { onCreated: (address: Address) => vo
   return (
     <form onSubmit={onSubmit} noValidate>
       <FormErrors message={message} />
-      <Field id="label" label="Label" value={label} onChange={setLabel} errors={fieldErrors.label} />
+      <Field id="label" label="Label" value={label} onChange={setLabel} errors={fieldErrors.label} placeholder="Home" />
       <Field
         id="line1"
         label="Street address"
@@ -55,8 +55,17 @@ export function AddressForm({ onCreated }: { onCreated: (address: Address) => vo
         onChange={setLine1}
         errors={fieldErrors.line1}
         autoComplete="address-line1"
+        placeholder="12 Elm Street"
       />
-      <Field id="city" label="City" value={city} onChange={setCity} errors={fieldErrors.city} autoComplete="address-level2" />
+      <Field
+        id="city"
+        label="City"
+        value={city}
+        onChange={setCity}
+        errors={fieldErrors.city}
+        autoComplete="address-level2"
+        placeholder="Springfield"
+      />
       <Field
         id="postalCode"
         label="Postal code"
@@ -64,6 +73,7 @@ export function AddressForm({ onCreated }: { onCreated: (address: Address) => vo
         onChange={setPostalCode}
         errors={fieldErrors.postalCode}
         autoComplete="postal-code"
+        placeholder="62704"
       />
       <Field
         id="country"
@@ -72,6 +82,7 @@ export function AddressForm({ onCreated }: { onCreated: (address: Address) => vo
         onChange={setCountry}
         errors={fieldErrors.country}
         autoComplete="country"
+        placeholder="US"
       />
       <button type="submit" disabled={submitting} className="border rounded px-3 py-1">
         {submitting ? "Saving…" : "Save address"}

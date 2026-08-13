@@ -1,10 +1,10 @@
 "use client";
 
 export function Field({
-  id, label, type = "text", value, onChange, errors, autoComplete,
+  id, label, type = "text", value, onChange, errors, autoComplete, placeholder,
 }: {
   id: string; label: string; type?: string; value: string;
-  onChange: (value: string) => void; errors?: string[]; autoComplete?: string;
+  onChange: (value: string) => void; errors?: string[]; autoComplete?: string; placeholder?: string;
 }) {
   const hasErrors = Boolean(errors?.length);
   return (
@@ -16,6 +16,7 @@ export function Field({
         type={type}
         value={value}
         autoComplete={autoComplete}
+        placeholder={placeholder}
         aria-invalid={hasErrors || undefined}
         aria-describedby={hasErrors ? `${id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}
