@@ -45,11 +45,16 @@ describe("ProfileForm", () => {
     await userEvent.clear(screen.getByLabelText("Phone"));
     await userEvent.type(screen.getByLabelText("Phone"), "555-0199");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled());
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toContain("/users/me");
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body)).toEqual({ phone: "555-0199" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({});
   });
 
   it("renders a fieldErrors.phone response beside the phone input", async () => {

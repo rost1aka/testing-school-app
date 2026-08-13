@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch, ApiError } from "../lib/api";
 import type { UserProfile } from "../lib/types";
 import { FormErrors } from "./FormErrors";
@@ -9,6 +9,10 @@ import { FormErrors } from "./FormErrors";
 export function RequireAuth({ children }: { children: (profile: UserProfile) => React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const routerRef = useRef(router);
+  const pathnameRef = useRef(pathname);
+  routerRef.current = router;
+  pathnameRef.current = pathname;
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +27,7 @@ export function RequireAuth({ children }: { children: (profile: UserProfile) => 
       .catch((error) => {
         if (cancelled) return;
         if (error instanceof ApiError && error.status === 401) {
-          router.push(`/login?returnTo=${encodeURIComponent(pathname)}`);
+          routerRef.current.push(`/login?returnTo=${encodeURIComponent(pathnameRef.current)}`);
         } else if (error instanceof ApiError) {
           setMessage(error.message);
         } else {
@@ -36,7 +40,7 @@ export function RequireAuth({ children }: { children: (profile: UserProfile) => 
     return () => {
       cancelled = true;
     };
-  }, [router, pathname]);
+  }, []);
 
   if (loading) return <p>Loading…</p>;
   if (message) return <FormErrors message={message} />;

@@ -37,17 +37,23 @@ describe("RequireAuth", () => {
   });
 
   it("renders the child with the fetched profile", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, profile)));
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, profile));
+    vi.stubGlobal("fetch", fetchMock);
     render(<RequireAuth>{(p) => <p>{p.name}</p>}</RequireAuth>);
     expect(await screen.findByText("Sam Sample")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("calls push with a login path on a 401", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+    const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse(401, { code: "UNAUTHENTICATED", message: "Sign in required", fieldErrors: null }),
-    ));
+    );
+    vi.stubGlobal("fetch", fetchMock);
     render(<RequireAuth>{() => <p>Secret</p>}</RequireAuth>);
-    await waitFor(() => expect(push).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
     expect(push.mock.calls[0][0]).toMatch(/^\/login/);
   });
 
@@ -55,8 +61,8 @@ describe("RequireAuth", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
       jsonResponse(401, { code: "UNAUTHENTICATED", message: "Sign in required", fieldErrors: null }),
     ));
-    render(<RequireAuth>{() => <p>Secret</p>}</RequireAuth>);
+    const { container } = render(<RequireAuth>{() => <p>Secret</p>}</RequireAuth>);
     await waitFor(() => expect(push).toHaveBeenCalled());
-    expect(screen.queryByText("Secret")).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
   });
 });
