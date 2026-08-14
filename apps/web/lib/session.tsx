@@ -39,7 +39,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mountedRef.current = false;
     };
-  }, [refresh]);
+  }, []);
 
   const signOut = useCallback(async () => {
     try {
