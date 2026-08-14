@@ -28,6 +28,10 @@ AUTH-09  Signing out revokes the refresh token on the server. A session cannot
          be restored after signing out.
 AUTH-10  A forgot-password request returns 202 whether or not the address is
          registered, and reveals nothing about which addresses exist.
+AUTH-11  While a user is signed in, the application header shows their name and
+         offers a way to sign out, and does not offer links to sign in or to
+         register. While no user is signed in, the header offers those links and
+         shows neither a name nor a way to sign out.
 
 ## Profile and addresses
 
@@ -40,3 +44,9 @@ USER-04  Addresses belong to a user, who may list, create, update and delete
          only their own. A user has at most one default address at any time.
 USER-05  Every form input has a label that is programmatically associated with
          it, so assistive technology announces the field it belongs to.
+
+## Home page
+
+HOME-01  The home page tells a visitor who is not signed in what the application
+         is and offers links to sign in and to register. For a signed-in user it
+         greets them by name and links to their profile and their addresses.
