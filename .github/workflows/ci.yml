@@ -23,12 +23,16 @@ jobs:
       maildev:
         image: maildev/maildev:2.1.0
         ports: ["1025:1025", "1080:1080"]
-        # The image's built-in HEALTHCHECK probes localhost over IPv6, but
-        # maildev only binds IPv4, so it reports "unhealthy" forever and
-        # Actions would wait on the service indefinitely. Disable it here,
-        # the same way docker-compose.yml disables it with
-        # `healthcheck: disable: true`.
-        options: --no-healthcheck
+        # The image's built-in HEALTHCHECK probes `localhost`, which resolves
+        # to ::1, while maildev binds IPv4 only — so it would report
+        # "unhealthy" forever. `--no-healthcheck` is not the way out: it
+        # leaves `.Config.Healthcheck` set to NONE, and the runner's probe
+        # (`{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}`)
+        # still treats that as "has a healthcheck", then dies on the missing
+        # `.State.Health`. Override the command with one that works instead.
+        options: >-
+          --health-cmd "wget -q -O - http://127.0.0.1:1080/healthz || exit 1"
+          --health-interval 3s --health-timeout 3s --health-retries 20
     env:
       DATABASE_URL: postgresql://school:school@localhost:5432/school
       TEST_DATABASE_URL: postgresql://school:school@localhost:5432/school_test
