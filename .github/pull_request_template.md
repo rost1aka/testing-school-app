@@ -1,0 +1,15 @@
+## Clause violated
+<!-- e.g. AUTH-07 -->
+
+## How to reproduce
+<!-- Exact steps or request. Someone else must be able to follow these. -->
+
+## Test level chosen, and why
+<!-- unit / api / component / e2e — and why this level rather than another -->
+
+## Red → green
+<!-- Commit SHA of the failing test, then of the fix -->
+
+- [ ] The failing test was committed before the fix
+- [ ] `pnpm test` passes locally
+- [ ] That run had the API on port 4000, the web app on port 3000, and a seeded database (`pnpm db:reset`) — the browser suite needs all three

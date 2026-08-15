@@ -1,0 +1,73 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SiteHeader } from "../components/SiteHeader";
+import type { UserProfile } from "../lib/types";
+
+const push = vi.fn();
+const signOut = vi.fn().mockResolvedValue(undefined);
+const useSessionMock = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
+
+vi.mock("../lib/session", () => ({
+  useSession: () => useSessionMock(),
+}));
+
+const profile: UserProfile = {
+  id: "usr_1",
+  email: "student@example.com",
+  name: "Sam Sample",
+  phone: null,
+  role: "USER",
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
+
+beforeEach(() => {
+  push.mockClear();
+  signOut.mockClear();
+});
+
+describe("SiteHeader", () => {
+  it("signed out: shows Login and Register links", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByRole("link", { name: "Login" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Register" })).toBeInTheDocument();
+  });
+
+  it("signed out: has no Sign out button and no Profile link", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Profile" })).not.toBeInTheDocument();
+  });
+
+  it("signed in: shows the user's name", () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByText("Sam Sample")).toBeInTheDocument();
+  });
+
+  it("signed in: shows a Sign out button", () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("signed in: has no Login or Register link", () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.queryByRole("link", { name: "Login" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Register" })).not.toBeInTheDocument();
+  });
+
+  it("clicking Sign out calls the session's signOut", async () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(signOut).toHaveBeenCalledTimes(1);
+  });
+});

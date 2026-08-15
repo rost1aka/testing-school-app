@@ -1,0 +1,236 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: school
+          POSTGRES_PASSWORD: school
+          POSTGRES_DB: school
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U school"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+      maildev:
+        image: maildev/maildev:2.1.0
+        ports: ["1025:1025", "1080:1080"]
+        # The image's built-in HEALTHCHECK probes `localhost`, which resolves
+        # to ::1, while maildev binds IPv4 only — so it would report
+        # "unhealthy" forever. `--no-healthcheck` is not the way out: it
+        # leaves `.Config.Healthcheck` set to NONE, and the runner's probe
+        # (`{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}`)
+        # still treats that as "has a healthcheck", then dies on the missing
+        # `.State.Health`. Override the command with one that works instead.
+        options: >-
+          --health-cmd "wget -q -O - http://127.0.0.1:1080/healthz || exit 1"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://school:school@localhost:5432/school
+      TEST_DATABASE_URL: postgresql://school:school@localhost:5432/school_test
+      JWT_SECRET: ci-secret
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright's browser and OS dependencies
+        run: pnpm --filter @school/e2e exec playwright install --with-deps chromium
+
+      # The postgres service only creates the database named in
+      # POSTGRES_DB (school). Locally, docker-compose mounts
+      # docker/postgres-init.sql to also create school_test, but a service
+      # container here can't mount a file, so school_test doesn't exist
+      # yet. Create it explicitly, tolerating a second run.
+      - name: Create the test database
+        run: |
+          export PGPASSWORD=school
+          psql -h localhost -U school -d school -tAc \
+            "SELECT 1 FROM pg_database WHERE datname = 'school_test'" | grep -q 1 \
+            || psql -h localhost -U school -d school -c "CREATE DATABASE school_test"
+
+      # The browser suite (run by `pnpm test`, below) drives the API and web
+      # servers started further down, and those read DATABASE_URL — the
+      # `school` database, not `school_test`. Reset and seed it now so
+      # student@example.com and friends exist before those servers start.
+      # This is a separate database from the one the API's own integration
+      # suite uses: that suite points itself at TEST_DATABASE_URL and
+      # manages its own migrations in test/global-setup.ts.
+      - name: Seed the database for the browser suite
+        run: pnpm --filter @school/api db:reset
+
+      # Next.js inlines NEXT_PUBLIC_* variables into the client bundle at
+      # build time, so this has to be set here, on the build step, not on
+      # the start step below — setting it only when starting the server
+      # would be too late for the browser-side code that reads it.
+      - name: Build the web app
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+        run: pnpm --filter @school/web build
+
+      # @school/api builds with `nest build` and starts with `nest start`;
+      # `nest start` compiles the project itself before running it (through
+      # the real TypeScript compiler, so decorator metadata is emitted —
+      # see the boot job below for why that distinction matters) and does
+      # not need a separate build step here. @school/web already has its
+      # production build from the step above, so `next start` just serves
+      # it. Both run in the background so the next step can poll them and
+      # this job can go on to start the other.
+      - name: Start the API and the web app
+        run: |
+          pnpm --filter @school/api start > /tmp/api.log 2>&1 &
+          pnpm --filter @school/web start > /tmp/web.log 2>&1 &
+
+      # Poll rather than sleep a fixed amount: a fixed sleep either wastes
+      # time once the servers are already up, or races them and fails
+      # flakily when they're a little slow to start.
+      - name: Wait for the API and the web app to respond
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:4000/health >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:4000/health >/dev/null \
+            || { echo "::error::API did not start"; cat /tmp/api.log; exit 1; }
+
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000 >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:3000 >/dev/null \
+            || { echo "::error::Web app did not start"; cat /tmp/web.log; exit 1; }
+
+      # pnpm test runs @school/shared's unit suite, @school/api's unit
+      # suite, @school/api's integration suite, @school/web's component
+      # suite, and @school/e2e's browser suite, in that order (see the root
+      # package.json "test" script). The integration suite's own
+      # globalSetup runs `prisma migrate deploy` against TEST_DATABASE_URL
+      # before its first test, so no separate migration step is needed for
+      # it here. The browser suite instead drives the API and web servers
+      # started above, over the `school` database seeded above.
+      - run: pnpm test
+
+  boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: school, POSTGRES_PASSWORD: school, POSTGRES_DB: school }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U school"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://school:school@localhost:5432/school
+      JWT_SECRET: ci-secret
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.3 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @school/api exec prisma migrate deploy
+      # Also serves as its own check that the build succeeds. The step
+      # below runs dist/main.js directly rather than `nest start` — `nest
+      # start` would recompile from source and never actually execute this
+      # output, which would defeat the point of a job whose whole job is to
+      # boot the real compiled artifact.
+      - run: pnpm --filter @school/api build
+      - name: Boot the compiled API and exercise an injected route
+        run: |
+          # Redirect to a log file rather than inheriting this step's
+          # stdout/stderr: `node dist/main.js` never exits, so if it kept
+          # the step's own output pipe open, the Actions runner would never
+          # see EOF on it and the step would hang for the full job timeout
+          # — on every run, healthy or not. Dumping the log on failure below
+          # keeps a broken start path debuggable instead of silent.
+          pnpm --filter @school/api exec node dist/main.js > /tmp/boot.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:4000/health >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:4000/health >/dev/null || { echo "::error::API did not start"; cat /tmp/boot.log; exit 1; }
+          # No -f here: a genuine 4xx must pass (it proves the controller
+          # reached its service), so curl's own exit status can't be used
+          # to detect a 4xx the way the /health checks above use it. But if
+          # the process has died — the exact "broken start path" this job
+          # guards against isn't limited to a live 500 — the connection
+          # itself fails, curl exits non-zero, and %{http_code} prints
+          # "000". Check both explicitly rather than trusting the code
+          # alone, so a dead server can't be misread as a passing 4xx.
+          # GitHub Actions runs each step with `bash -e`, and a bare
+          # `code=$(curl ...)` would abort the whole step right here — with
+          # no ::error:: message and no log dump — the instant curl's exit
+          # status is non-zero, before the check below ever runs. Disable
+          # -e just long enough to capture that status ourselves.
+          set +e
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:4000/auth/login \
+            -H 'Content-Type: application/json' -d '{"email":"nobody@example.com","password":"x"}')
+          curl_status=$?
+          set -e
+          if [ "$curl_status" -ne 0 ] || [ "$code" = "500" ] || [ "$code" = "000" ]; then
+            echo "::error::A route that uses an injected service returned '$code' (curl exit $curl_status) instead of a normal 4xx — dependency injection is broken in the start path."
+            cat /tmp/boot.log
+            exit 1
+          fi
+
+  tests-changed:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # actions/checkout on a pull_request event only guarantees the PR's
+      # merge ref is present; on a fork PR, origin/<base_ref> is not
+      # necessarily a resolvable ref yet even with fetch-depth: 0. Fetch it
+      # explicitly so the merge-base lookup below is reliable.
+      - name: Fetch the PR base branch
+        run: git fetch --no-tags origin "+${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+
+      - name: Require a test change alongside any source change
+        run: |
+          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)" || {
+            echo "::error::Could not compute a merge base with origin/${{ github.base_ref }}. This usually means the base branch wasn't fetched — check that checkout used fetch-depth: 0 and that the 'Fetch the PR base branch' step succeeded."
+            exit 1
+          }
+          changed="$(git diff --name-only "$base" HEAD)"
+          # Not every package keeps its source under src/. apps/api and
+          # packages/shared do, but apps/web is a Next.js app whose code
+          # lives in app/, components/ and lib/, and the browser suite is
+          # its own top-level e2e/ package. Matching src/ alone let a
+          # change to any web component, or to a browser spec, through the
+          # one gate whose whole purpose is to require the test first.
+          if printf '%s\n' "$changed" | grep -qE '^(apps|packages)/[^/]+/(src|app|components|lib)/|^e2e/'; then
+            if ! printf '%s\n' "$changed" | grep -qE '\.(spec|test|e2e-spec)\.tsx?$'; then
+              echo "::error::This PR changes application source under apps/*/ or packages/*/ (src, app, components or lib) or under e2e/, but doesn't add or update a matching *.spec.ts / *.test.ts / *.e2e-spec.ts / *.spec.tsx / *.test.tsx / *.e2e-spec.tsx file. Add a test that fails before your fix and passes after it, then include that test file in this pull request."
+              exit 1
+            fi
+          fi
