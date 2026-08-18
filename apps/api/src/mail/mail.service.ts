@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import nodemailer, { Transporter } from "nodemailer";
 
 const FROM_ADDRESS = "no-reply@school-app.test";
@@ -23,18 +23,42 @@ export async function settleMail(): Promise<void> {
 
 @Injectable()
 export class MailService {
+  private readonly logger = new Logger(MailService.name);
   private readonly transporter: Transporter;
+  private readonly deliverable: boolean;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: false,
-    });
+    const host = process.env.SMTP_HOST;
+    this.deliverable = Boolean(host);
+
+    // With no SMTP server configured — the normal state of a free deployment,
+    // where there is no Maildev — nodemailer would otherwise be handed host
+    // `undefined` on port `NaN` and reject every send, turning the documented
+    // 202 from POST /auth/forgot-password into a 500. jsonTransport serialises
+    // the message and resolves instead, and sendPasswordReset logs the link
+    // below so it stays usable.
+    this.transporter = this.deliverable
+      ? nodemailer.createTransport({
+          host,
+          port: Number(process.env.SMTP_PORT),
+          secure: false,
+          // Providers that need credentials read them from the environment;
+          // Maildev accepts anonymous mail and sets neither.
+          ...(process.env.SMTP_USER
+            ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } }
+            : {}),
+        })
+      : nodemailer.createTransport({ jsonTransport: true });
   }
 
   async sendPasswordReset(email: string, token: string): Promise<void> {
     const link = `${process.env.APP_URL}/reset-password?token=${token}`;
+
+    if (!this.deliverable) {
+      this.logger.warn(
+        `SMTP_HOST is not set, so no mail was delivered. Password reset link for ${email}: ${link}`,
+      );
+    }
 
     const send = this.transporter.sendMail({
       from: FROM_ADDRESS,
