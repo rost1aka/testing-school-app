@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Node version on Render: `22`. pnpm version: `10.33.3` — must match `packageManager` in the root `package.json`.
-- `pnpm install` on Render must pass `--prod=false`. pnpm treats `NODE_ENV=production` as `--prod` and would skip `devDependencies`, which is where `@nestjs/cli`, `next`, `prisma` and `typescript` live — the build would fail without them.
+- `pnpm install` on Render passes `--prod=false`. Verified: pnpm 10.33.3 installs `devDependencies` even under `NODE_ENV=production`, so the flag is defensive, not load-bearing — but the build needs `@nestjs/cli`, `next`, `prisma` and `typescript`, all `devDependencies`, and npm and older pnpm do prune them.
 - No secret value is committed. `DATABASE_URL`, `APP_URL` and `NEXT_PUBLIC_API_URL` are declared `sync: false` in `render.yaml` so Render prompts for them.
 - Every default (no `PORT`, no `CROSS_SITE_COOKIES`, `SMTP_HOST` pointing at Maildev) must keep behaving exactly as it does today, so local development and CI are unaffected.
 - The CI job `tests-changed` fails any pull request that touches `apps/*/src`, `apps/*/app`, `apps/*/components`, `apps/*/lib` or `e2e/` without also changing a `*.spec.ts` / `*.test.ts` / `*.e2e-spec.ts` file. Every task below that touches source ships its test in the same commit.

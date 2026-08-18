@@ -122,13 +122,20 @@ and needs no Dockerfile to maintain. pnpm is installed explicitly at a pinned
 version instead of through Corepack, so the build does not depend on the
 platform image's Corepack behaviour.
 
-    build: npm i -g pnpm@10.33.3 && pnpm install --frozen-lockfile && pnpm --filter <pkg> build
+    build: npm i -g pnpm@10.33.3 && pnpm install --frozen-lockfile --prod=false && pnpm --filter <pkg> build
     start (api): pnpm --filter @school/api exec prisma migrate deploy && node dist/main.js
     start (web): pnpm --filter @school/web exec next start
 
 The root `pnpm install` triggers the API's `postinstall`, which runs
 `prisma generate` — without it `@prisma/client` exports no models and the build
 fails.
+
+`--prod=false` is defensive rather than load-bearing. pnpm 10.33.3 installs
+`devDependencies` even when `NODE_ENV=production`, which was verified rather
+than assumed; npm and older pnpm prune them. Since the build needs
+`@nestjs/cli`, `next`, `prisma` and `typescript`, all of them
+`devDependencies`, the flag makes it immune to however the platform sets
+`NODE_ENV`.
 
 ### Migrations run at start, not before deploy
 
