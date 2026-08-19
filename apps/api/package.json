@@ -9,6 +9,7 @@
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
     "db:reset": "prisma migrate reset --force --skip-generate && tsx prisma/seed.ts",
+    "db:seed:catalogue": "tsx prisma/seed-catalogue.ts",
     "build": "nest build"
   },
   "dependencies": {
