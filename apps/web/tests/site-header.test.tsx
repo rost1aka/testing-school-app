@@ -16,6 +16,10 @@ vi.mock("../lib/session", () => ({
   useSession: () => useSessionMock(),
 }));
 
+vi.mock("../lib/cart", () => ({
+  useCart: () => ({ cart: { id: null, itemCount: 0, lines: [], subtotalCents: 0, discountCents: 0, payableCents: 0 }, loading: false }),
+}));
+
 const profile: UserProfile = {
   id: "usr_1",
   email: "student@example.com",
@@ -86,6 +90,19 @@ describe("SiteHeader", () => {
     useSessionMock.mockReturnValue({ profile: null, loading: true, refresh: vi.fn(), signOut });
     render(<SiteHeader />);
     expect(screen.getByTestId("nav-skeleton")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("offers the catalogue and the cart whether or not anyone is signed in", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: false, refresh: vi.fn(), signOut });
+    const { unmount } = render(<SiteHeader />);
+    expect(screen.getByRole("link", { name: "Catalogue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cart (0)" })).toBeInTheDocument();
+    unmount();
+
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByRole("link", { name: "Catalogue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cart (0)" })).toBeInTheDocument();
   });
 
   it("clicking Sign out calls the session's signOut", async () => {

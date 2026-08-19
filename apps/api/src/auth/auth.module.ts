@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
+import { CartModule } from "../cart/cart.module";
+import { jwtOptions } from "../common/jwt-options";
 import { MailModule } from "../mail/mail.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -7,26 +9,16 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
 
 @Module({
   imports: [
-    // registerAsync, not register: `register` reads process.env while this
-    // file is being *imported*, which makes correctness depend on whether the
-    // .env file happened to be loaded by some earlier import. The factory runs
-    // when the module is instantiated instead, by which point main.ts (or the
-    // e2e globalSetup) has definitely loaded apps/api/.env.
-    JwtModule.registerAsync({
-      useFactory: () => {
-        const secret = process.env.JWT_SECRET;
-        if (!secret) {
-          // Without this, JwtModule signs with `undefined`, which jsonwebtoken
-          // accepts: the app boots, issues tokens nobody can verify, and fails
-          // much later with an unrelated-looking 401.
-          throw new Error(
-            "JWT_SECRET is not set. Copy apps/api/.env.example to apps/api/.env, or set JWT_SECRET in the environment.",
-          );
-        }
-        return { secret, signOptions: { expiresIn: "15m" } };
-      },
-    }),
+    // registerAsync, not register: `register` would read process.env while
+    // this file is being *imported*, which makes correctness depend on
+    // whether the .env file happened to be loaded by some earlier import.
+    // The factory runs when the module is instantiated instead, by which
+    // point main.ts (or the e2e globalSetup) has definitely loaded
+    // apps/api/.env.
+    JwtModule.registerAsync({ useFactory: jwtOptions }),
     MailModule,
+    // Signing in hands over the cart the browser built while signed out.
+    CartModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],

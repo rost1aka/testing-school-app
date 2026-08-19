@@ -24,6 +24,7 @@ model User {
   refreshTokens RefreshToken[]
   resetTokens   PasswordResetToken[]
   addresses     Address[]
+  cart          Cart?
 }
 
 model RefreshToken {
@@ -60,4 +61,66 @@ model Address {
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Category {
+  id       String            @id
+  slug     String            @unique
+  name     String
+  products ProductCategory[]
+}
+
+model Product {
+  id          String @id
+  slug        String @unique
+  name        String
+  description String
+  priceCents  Int
+  // A sale, as a whole percentage off the list price; 0 means "no sale".
+  // What a product actually costs is derived from these two columns and
+  // never stored, so ending a sale changes every cart holding the product.
+  discountPercent Int    @default(0)
+  imageUrl        String
+  stock           Int
+
+  categories ProductCategory[]
+  cartLines  CartLine[]
+}
+
+// An explicit join model rather than an implicit many-to-many relation: a
+// product genuinely belongs to more than one category, and naming the join
+// keeps a filter that has to satisfy category and price at once readable.
+model ProductCategory {
+  productId  String
+  categoryId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@index([categoryId])
+}
+
+model Cart {
+  id String @id @default(cuid())
+  // Exactly one of these identifies a cart: `userId` once it belongs to an
+  // account, `token` while it belongs to a browser nobody has signed in on.
+  // Signing in moves the browser's cart onto the account, which is why both
+  // are nullable columns on one model rather than two models.
+  userId String? @unique
+  token  String? @unique
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lines CartLine[]
+}
+
+model CartLine {
+  id        String @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([cartId])
 }

@@ -1,12 +1,16 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "../app/page";
-import type { UserProfile } from "../lib/types";
+import type { Product, UserProfile } from "../lib/types";
 
 const useSessionMock = vi.fn();
 
 vi.mock("../lib/session", () => ({
   useSession: () => useSessionMock(),
+}));
+
+vi.mock("../lib/cart", () => ({
+  useCart: () => ({ cart: null, loading: false, addItem: vi.fn(), refresh: vi.fn() }),
 }));
 
 const profile: UserProfile = {
@@ -17,6 +21,34 @@ const profile: UserProfile = {
   role: "USER",
   createdAt: "2026-01-01T00:00:00.000Z",
 };
+
+const product: Product = {
+  id: "prd_lamp",
+  slug: "desk-lamp",
+  name: "Desk lamp",
+  description: "A lamp for a desk",
+  priceCents: 3450,
+  discountPercent: 0,
+  effectivePriceCents: 3450,
+  imageUrl: "/product-image/desk-lamp",
+  stock: 5,
+  categories: [{ id: "cat_tools", slug: "tools", name: "Tools" }],
+};
+
+function jsonResponse(status: number, body: unknown) {
+  return { ok: status < 400, status, json: async () => body } as Response;
+}
+
+beforeEach(() => {
+  vi.unstubAllGlobals();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      if (String(url).includes("/categories")) return jsonResponse(200, [product.categories[0]]);
+      return jsonResponse(200, { items: [product], page: 1, pageSize: 12, total: 1, totalPages: 1 });
+    }),
+  );
+});
 
 describe("HomePage", () => {
   it("signed out: shows the intro paragraph and both calls to action", () => {
@@ -36,7 +68,7 @@ describe("HomePage", () => {
   it("signed in: the greeting contains the user's name", () => {
     useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut: vi.fn() });
     render(<HomePage />);
-    expect(screen.getByRole("heading")).toHaveTextContent(profile.name);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(profile.name);
   });
 
   it("signed in: shows links to the profile and the addresses", () => {
@@ -60,5 +92,18 @@ describe("HomePage", () => {
     render(<HomePage />);
     expect(screen.queryByRole("link", { name: "Log in" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Your profile" })).not.toBeInTheDocument();
+  });
+
+  it("signed out: shows the shop", async () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: false, refresh: vi.fn(), signOut: vi.fn() });
+    render(<HomePage />);
+    expect(await screen.findByText("Desk lamp")).toBeInTheDocument();
+    expect(screen.getByText("$34.50")).toBeInTheDocument();
+  });
+
+  it("signed in: shows the same shop", async () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut: vi.fn() });
+    render(<HomePage />);
+    expect(await screen.findByText("Desk lamp")).toBeInTheDocument();
   });
 });
