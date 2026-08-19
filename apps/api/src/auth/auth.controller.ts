@@ -10,15 +10,14 @@ import {
   resetPasswordSchema,
   ResetPasswordInput,
 } from "@school/shared";
+import { cookieSecurity } from "../common/config";
 import { AppError } from "../common/error-response";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AuthService } from "./auth.service";
 
-const COOKIE_OPTIONS: CookieOptions = {
+const BASE_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  sameSite: "lax",
   path: "/",
-  secure: false,
 };
 
 // AUTH-03: "an access token valid for 15 minutes and a refresh token valid for
@@ -30,15 +29,21 @@ const COOKIE_OPTIONS: CookieOptions = {
 const ACCESS_TOKEN_COOKIE_MAX_AGE_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-const ACCESS_COOKIE_OPTIONS: CookieOptions = {
-  ...COOKIE_OPTIONS,
-  maxAge: ACCESS_TOKEN_COOKIE_MAX_AGE_MS,
-};
+// Built per request rather than once at module load: `SameSite` and `Secure`
+// depend on whether the web app is served from another site, which is a fact
+// about the environment. A module-level constant would freeze whichever value
+// happened to be set when this file was first imported, which is also what
+// makes the two cases untestable in a single process.
+function cookieOptions(maxAge?: number): CookieOptions {
+  return {
+    ...BASE_COOKIE_OPTIONS,
+    ...cookieSecurity(process.env),
+    ...(maxAge === undefined ? {} : { maxAge }),
+  };
+}
 
-const REFRESH_COOKIE_OPTIONS: CookieOptions = {
-  ...COOKIE_OPTIONS,
-  maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE_MS,
-};
+const accessCookieOptions = (): CookieOptions => cookieOptions(ACCESS_TOKEN_COOKIE_MAX_AGE_MS);
+const refreshCookieOptions = (): CookieOptions => cookieOptions(REFRESH_TOKEN_COOKIE_MAX_AGE_MS);
 
 @Controller("auth")
 export class AuthController {
@@ -51,8 +56,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ id: string }> {
     const { id, accessToken, refreshToken } = await this.authService.register(body);
-    res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
-    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie("access_token", accessToken, accessCookieOptions());
+    res.cookie("refresh_token", refreshToken, refreshCookieOptions());
     return { id };
   }
 
@@ -63,8 +68,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     const { accessToken, refreshToken } = await this.authService.login(body);
-    res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
-    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie("access_token", accessToken, accessCookieOptions());
+    res.cookie("refresh_token", refreshToken, refreshCookieOptions());
   }
 
   @Post("refresh")
@@ -76,8 +81,8 @@ export class AuthController {
     }
 
     const { accessToken, refreshToken } = await this.authService.refresh(presentedToken);
-    res.cookie("access_token", accessToken, ACCESS_COOKIE_OPTIONS);
-    res.cookie("refresh_token", refreshToken, REFRESH_COOKIE_OPTIONS);
+    res.cookie("access_token", accessToken, accessCookieOptions());
+    res.cookie("refresh_token", refreshToken, refreshCookieOptions());
   }
 
   @Post("logout")
@@ -88,8 +93,8 @@ export class AuthController {
       await this.authService.logout(presentedToken);
     }
 
-    res.clearCookie("access_token", COOKIE_OPTIONS);
-    res.clearCookie("refresh_token", COOKIE_OPTIONS);
+    res.clearCookie("access_token", cookieOptions());
+    res.clearCookie("refresh_token", cookieOptions());
   }
 
   @Post("forgot-password")

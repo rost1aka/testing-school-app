@@ -1,0 +1,70 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Two free web services out of one pnpm monorepo. See docs/deployment.md for
+# the steps an operator takes around this file.
+#
+# The database is deliberately NOT declared here. Render deletes a free
+# Postgres instance 30 days after it is created, taking its data with it, so
+# the database lives on Neon's free tier instead and reaches the API through
+# DATABASE_URL.
+services:
+  - type: web
+    name: school-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    # --prod=false is explicit rather than load-bearing: pnpm 10.33.3 installs
+    # devDependencies even under NODE_ENV=production (verified), but npm and
+    # older pnpm prune them, and this build needs @nestjs/cli, next, prisma
+    # and typescript — all devDependencies. The flag makes the build immune to
+    # how the platform sets NODE_ENV.
+    #
+    # The root install also runs @school/api's postinstall (prisma generate);
+    # without it @prisma/client exports no models and the build fails.
+    buildCommand: npm install -g pnpm@10.33.3 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @school/api build
+    # Migrations run here rather than in a preDeployCommand, which is a paid
+    # plan feature. The free plan runs a single instance, and Prisma takes an
+    # advisory lock regardless, so concurrent migrations are not a concern.
+    startCommand: pnpm --filter @school/api exec prisma migrate deploy && pnpm --filter @school/api exec node dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # school-web.onrender.com and school-api.onrender.com are different
+      # *sites* to a browser — onrender.com is on the Public Suffix List — so
+      # the session cookies need SameSite=None; Secure or sign-in silently
+      # fails. See apps/api/src/common/config.ts.
+      - key: CROSS_SITE_COOKIES
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      # Prompted for at Blueprint creation. Use Neon's *direct* connection
+      # string, not the pooled one: prisma migrate deploy does not work
+      # through PgBouncer, and one long-lived instance gains nothing from
+      # pooling.
+      - key: DATABASE_URL
+        sync: false
+      # https://school-web.onrender.com — the CORS origin the API accepts and
+      # the base of the password reset link.
+      - key: APP_URL
+        sync: false
+
+  - type: web
+    name: school-web
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm install -g pnpm@10.33.3 && pnpm install --frozen-lockfile --prod=false && pnpm --filter @school/web build
+    startCommand: pnpm --filter @school/web exec next start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # https://school-api.onrender.com. Next.js inlines NEXT_PUBLIC_* into the
+      # client bundle at BUILD time, so changing this needs a redeploy, not a
+      # restart.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

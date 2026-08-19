@@ -71,3 +71,6 @@ password `Password123!`:
   for, the exact commands to run them, and how to read a test failure.
 - [`docs/workflow.md`](docs/workflow.md) — the loop for finding a defect,
   writing the test that catches it, fixing it, and opening a pull request.
+- [`docs/deployment.md`](docs/deployment.md) — how to deploy the app to Render
+  with a Neon Postgres database, both on free tiers, and what that free tier
+  costs you in cold starts.
