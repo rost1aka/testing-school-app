@@ -1,5 +1,6 @@
 "use client";
 
+import { CataloguePanel } from "../components/CataloguePanel";
 import { LoadingState } from "../components/LoadingState";
 import { useSession } from "../lib/session";
 
@@ -7,7 +8,7 @@ export default function HomePage() {
   const { profile, loading } = useSession();
 
   return (
-    <main className="mx-auto max-w-xl px-6 py-10">
+    <main className="mx-auto max-w-5xl px-6 py-10">
       {loading ? (
         <LoadingState />
       ) : profile ? (
@@ -52,6 +53,14 @@ export default function HomePage() {
           </div>
         </>
       )}
+
+      {/* The shop is the point of the front page, so it is here for everyone
+          and does not wait on the session: a visitor who has not signed in
+          browses exactly what a signed-in one does. */}
+      <section className="mt-10 border-t border-border pt-8">
+        <h2 className="mb-6 text-xl font-semibold tracking-tight text-text">Browse the shop</h2>
+        <CataloguePanel />
+      </section>
     </main>
   );
 }

@@ -25,7 +25,7 @@ export async function createTestApp(): Promise<TestApp> {
 
   const prisma = app.get(PrismaService);
   await prisma.$executeRawUnsafe(
-    `TRUNCATE "User", "RefreshToken", "PasswordResetToken", "Address" RESTART IDENTITY CASCADE`,
+    `TRUNCATE "User", "RefreshToken", "PasswordResetToken", "Address", "Category", "Product", "ProductCategory", "Cart", "CartLine" RESTART IDENTITY CASCADE`,
   );
 
   return {

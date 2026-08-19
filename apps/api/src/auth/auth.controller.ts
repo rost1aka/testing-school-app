@@ -10,6 +10,8 @@ import {
   resetPasswordSchema,
   ResetPasswordInput,
 } from "@school/shared";
+import { CART_COOKIE, CART_COOKIE_OPTIONS } from "../cart/cart-cookie";
+import { CartService } from "../cart/cart.service";
 import { cookieSecurity } from "../common/config";
 import { AppError } from "../common/error-response";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -47,15 +49,20 @@ const refreshCookieOptions = (): CookieOptions => cookieOptions(REFRESH_TOKEN_CO
 
 @Controller("auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly cartService: CartService,
+  ) {}
 
   @Post("register")
   @HttpCode(201)
   async register(
     @Body(new ZodValidationPipe(registerSchema)) body: RegisterInput,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ id: string }> {
     const { id, accessToken, refreshToken } = await this.authService.register(body);
+    await this.claimGuestCart(id, req, res);
     res.cookie("access_token", accessToken, accessCookieOptions());
     res.cookie("refresh_token", refreshToken, refreshCookieOptions());
     return { id };
@@ -65,9 +72,11 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body(new ZodValidationPipe(loginSchema)) body: LoginInput,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
-    const { accessToken, refreshToken } = await this.authService.login(body);
+    const { accessToken, refreshToken, userId } = await this.authService.login(body);
+    await this.claimGuestCart(userId, req, res);
     res.cookie("access_token", accessToken, accessCookieOptions());
     res.cookie("refresh_token", refreshToken, refreshCookieOptions());
   }
@@ -111,5 +120,20 @@ export class AuthController {
     @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput,
   ): Promise<void> {
     await this.authService.resetPassword(body.token, body.password);
+  }
+
+  /**
+   * CART-05: whatever this browser put in a cart while signed out belongs to
+   * the account that has just signed in, and is added to anything already
+   * there. The cookie goes afterwards — the cart hangs off the account now,
+   * and leaving the token behind would have the next signed-out visit on
+   * this browser reopen a cart that is no longer its own.
+   */
+  private async claimGuestCart(userId: string, req: Request, res: Response): Promise<void> {
+    const guestToken: string | undefined = req.cookies?.[CART_COOKIE];
+    if (!guestToken) return;
+
+    await this.cartService.claimGuestCart(userId, guestToken);
+    res.clearCookie(CART_COOKIE, CART_COOKIE_OPTIONS);
   }
 }

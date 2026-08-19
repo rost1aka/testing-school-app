@@ -63,6 +63,9 @@ password `Password123!`:
 - `admin@example.com`
 - `dana@example.com`
 
+The same reset fills the shop: five categories and 61 products, a few of them
+on sale. Browse them at http://localhost:3000/catalogue.
+
 ## Documentation
 
 - [`docs/spec.md`](docs/spec.md) — the product specification. Defines what
