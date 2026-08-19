@@ -64,6 +64,30 @@ describe("SiteHeader", () => {
     expect(screen.queryByRole("link", { name: "Register" })).not.toBeInTheDocument();
   });
 
+  // On a sleeping free-tier API the session request can take up to a minute.
+  // Hiding the nav outright left the header looking finished but empty, and
+  // then jumping when the real links arrived.
+  it("loading: shows placeholders in place of the nav", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: true, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByTestId("nav-skeleton")).toBeInTheDocument();
+  });
+
+  it("loading: commits to neither the signed-in nor the signed-out nav", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: true, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.queryByRole("link", { name: "Login" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Register" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Profile" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
+  });
+
+  it("loading: hides the placeholders from assistive technology", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: true, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByTestId("nav-skeleton")).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("clicking Sign out calls the session's signOut", async () => {
     useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
     render(<SiteHeader />);

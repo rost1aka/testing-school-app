@@ -45,4 +45,20 @@ describe("HomePage", () => {
     expect(screen.getByRole("link", { name: "Your profile" })).toHaveAttribute("href", "/profile");
     expect(screen.getByRole("link", { name: "Your addresses" })).toHaveAttribute("href", "/addresses");
   });
+
+  // Previously this state rendered a lone "School App" heading, which looks
+  // like a finished page that simply has nothing on it — exactly how it read
+  // during a minute-long cold start on the free tier.
+  it("loading: says it is loading rather than rendering a bare heading", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: true, refresh: vi.fn(), signOut: vi.fn() });
+    render(<HomePage />);
+    expect(screen.getByRole("status")).toHaveTextContent(/loading/i);
+  });
+
+  it("loading: offers neither the signed-in nor the signed-out calls to action", () => {
+    useSessionMock.mockReturnValue({ profile: null, loading: true, refresh: vi.fn(), signOut: vi.fn() });
+    render(<HomePage />);
+    expect(screen.queryByRole("link", { name: "Log in" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Your profile" })).not.toBeInTheDocument();
+  });
 });

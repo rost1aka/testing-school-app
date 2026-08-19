@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadingState } from "../components/LoadingState";
 import { useSession } from "../lib/session";
 
 export default function HomePage() {
@@ -8,7 +9,7 @@ export default function HomePage() {
   return (
     <main className="mx-auto max-w-xl px-6 py-10">
       {loading ? (
-        <h1 className="text-2xl font-semibold tracking-tight text-text">School App</h1>
+        <LoadingState />
       ) : profile ? (
         <>
           <h1 className="mb-6 text-2xl font-semibold tracking-tight text-text">
