@@ -112,6 +112,21 @@ That creates `student@example.com`, `admin@example.com` and
 This is deliberately manual. Wiring it into the start command would erase the
 database on every single deploy.
 
+## 6. Fill the shop
+
+`prisma migrate deploy` creates the catalogue's tables on every deploy, but it
+puts no products in them — a freshly deployed shop is empty. From the same
+**Shell**, run:
+
+```bash
+pnpm --filter @school/api db:seed:catalogue
+```
+
+It prints how many products it ended up with. Unlike the seed above, this one
+**deletes nothing**: it writes every category and product by id, so accounts,
+addresses and carts are left alone and running it twice changes nothing. Run
+it again after any deploy that adds products.
+
 ## Sending real email
 
 Password reset works out of the box, but delivers nothing: with `SMTP_HOST`
