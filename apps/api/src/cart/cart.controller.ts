@@ -9,7 +9,7 @@ import {
   UpdateCartLineInput,
 } from "@school/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
-import { CART_COOKIE, CART_COOKIE_OPTIONS } from "./cart-cookie";
+import { CART_COOKIE, cartCookieOptions } from "./cart-cookie";
 import { CartOwner, CartService, CartView } from "./cart.service";
 
 @Controller("cart")
@@ -82,7 +82,7 @@ export class CartController {
     if (owner.userId || owner.guestToken) return owner;
 
     const guestToken = randomUUID();
-    res.cookie(CART_COOKIE, guestToken, CART_COOKIE_OPTIONS);
+    res.cookie(CART_COOKIE, guestToken, cartCookieOptions());
     return { userId: null, guestToken };
   }
 }

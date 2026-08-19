@@ -10,7 +10,7 @@ import {
   resetPasswordSchema,
   ResetPasswordInput,
 } from "@school/shared";
-import { CART_COOKIE, CART_COOKIE_OPTIONS } from "../cart/cart-cookie";
+import { CART_COOKIE, cartCookieOptions } from "../cart/cart-cookie";
 import { CartService } from "../cart/cart.service";
 import { cookieSecurity } from "../common/config";
 import { AppError } from "../common/error-response";
@@ -134,6 +134,6 @@ export class AuthController {
     if (!guestToken) return;
 
     await this.cartService.claimGuestCart(userId, guestToken);
-    res.clearCookie(CART_COOKIE, CART_COOKIE_OPTIONS);
+    res.clearCookie(CART_COOKIE, cartCookieOptions());
   }
 }
