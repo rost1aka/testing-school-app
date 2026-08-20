@@ -110,3 +110,68 @@ HOME-01  The home page tells a visitor who is not signed in what the application
 HOME-02  The home page also shows the catalogue, with the same products,
          search, filters, sorting and pagination as the catalogue page, and
          shows it whether or not anyone is signed in.
+
+## UAP incident report
+
+UAP-01   Filing, listing and reading UAP incident reports requires a signed-in
+         user. An unauthenticated request returns 401.
+UAP-02   A report belongs to the agent who filed it. Listing returns only that
+         agent's reports, and requesting another agent's report returns 403.
+UAP-03   A filed report cannot be edited or deleted.
+UAP-04   The form requires a case number, reporting agent name, badge number,
+         field office, sighting date, report date, sighting location, object
+         shape, object count, observation duration, narrative, encounter
+         classification, threat assessment, classification level, and the
+         certification checkbox. Estimated altitude, evidence collected, media
+         reference ids, additional remarks and the leadership notification are
+         optional.
+UAP-05   A required free-text value must be 3 to 255 characters, or 3 to 1000
+         for a textarea. An optional one may be empty, and is otherwise bound
+         by the same maximum.
+UAP-06   Text is trimmed of leading and trailing whitespace before it is
+         validated and before it is stored. A value of only whitespace counts
+         as empty. Length is counted in Unicode code points.
+UAP-07   The case number must match UAP-YYYY-NNNN. Filing a report with a case
+         number already on file returns 409 and reports the problem against
+         the case number field.
+UAP-08   Neither the sighting date nor the report date may be in the future,
+         and the report date may not be earlier than the sighting date. The
+         ordering failure is reported against the report date.
+UAP-09   Choosing "Other" as the object shape reveals a required free-text
+         field describing the shape.
+UAP-10   Selecting physical debris or a biological sample as evidence reveals
+         a required custody chain field and a required storage location.
+         Selecting photographic or audio evidence reveals an optional media
+         reference field.
+UAP-11   Checking "civilian witnesses were present" reveals a required witness
+         count, a whole number between 1 and 999, and a required witness
+         statement.
+UAP-12   Encounter classification CE-2, CE-3 or CE-4 makes the physical
+         effects field required; CE-1 leaves it optional. The field is visible
+         in every case.
+UAP-13   Encounter classification CE-3 or CE-4 reveals a required occupant
+         description. CE-4 additionally reveals a required missing-time value,
+         a whole number between 1 and 10080, and a required medical evaluation
+         choice.
+UAP-14   A threat assessment of High reveals a required escalation
+         justification.
+UAP-15   A field that stops applying loses its value immediately, along with
+         any error shown against it, and reappears empty if it applies again.
+         A value for a field that does not apply is never stored.
+UAP-16   Submitting an invalid form sends no request to the server.
+UAP-17   When a submission is rejected, every invalid field shows its own
+         message beside it, and a summary at the top of the form states how
+         many fields need attention and links to each of them.
+UAP-18   When a submission is rejected, focus moves to the first invalid field
+         in document order.
+UAP-19   No field shows an error before the first submission attempt. After a
+         rejected submission, each field that was invalid rechecks itself as
+         it is edited, and its message disappears as soon as the value becomes
+         valid.
+UAP-20   The submit button is never disabled because the form is invalid. It
+         is disabled only while a submission is in flight.
+UAP-21   Character limits are not enforced by the input itself: a value longer
+         than the maximum can be typed, and is reported as an error naming the
+         limit and the current length.
+UAP-22   A successful filing returns 201 and shows the filed report read-only,
+         confirming the case number.
