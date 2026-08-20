@@ -17,9 +17,14 @@ export function SiteHeader() {
   return (
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-        <a href="/" className="text-sm font-semibold tracking-tight text-text">
-          School App
-        </a>
+        <div className="flex items-center gap-3">
+          <a href="/" className="text-sm font-semibold tracking-tight text-text">
+            School App
+          </a>
+          {/* Beside the wordmark rather than in the navigation: it changes how
+              the whole application looks, not where you are in it. */}
+          <ThemeToggle />
+        </div>
         <nav className="flex items-center gap-4 text-sm text-text-muted">
           {/* The shop and the cart are there for everyone, signed in or not,
               and neither waits on the session: a visitor browsing while the
@@ -28,7 +33,6 @@ export function SiteHeader() {
             Catalogue
           </a>
           <CartBadge />
-          <ThemeToggle />
           {loading ? (
             // Placeholders rather than nothing: the session request can take
             // up to a minute against a sleeping API, and an empty space for
