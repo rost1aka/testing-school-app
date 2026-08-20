@@ -100,7 +100,7 @@ what the agent reads.
 | Field | Control | Required | Max | Rules |
 |---|---|---|---|---|
 | `caseNumber` | text | yes | n/a | Must match `^UAP-\d{4}-\d{4}$`, which fixes its length at 13, so no band applies. Unique across all reports. |
-| `reportingAgentName` | text | yes | 255 | — |
+| `reportingAgentName` | text | yes | 255 | Opens prefilled with the signed-in user's name, and is editable. |
 | `badgeNumber` | text | yes | 255 | — |
 | `fieldOffice` | select | yes | — | `ALBUQUERQUE`, `ANCHORAGE`, `LAS_VEGAS`, `LOS_ANGELES`, `ROSWELL`, `SEATTLE`, `WASHINGTON_DC` |
 | `sightingDate` | date | yes | — | A real calendar date, not in the future. |
@@ -606,7 +606,12 @@ components; the inline-markup pattern in `AddressForm` is not repeated.
 ### 11.3 State
 
 The form holds one `UapReportDraft` in `useState`, initialised from
-`emptyUapReportDraft`. Changing a controlling answer runs the draft through a
+`emptyUapReportDraft` with `reportingAgentName` set to the signed-in user's
+name. The name arrives as a prop rather than being fetched by the form or
+filled in by an effect: `RequireAuth` renders the form only once the profile
+has resolved, so it is available at the moment the state is created, and a
+value the agent has already edited can never be overwritten by a late
+arrival. Changing a controlling answer runs the draft through a
 normalising step that clears every field which has just become inapplicable —
 so rule 2 of section 5.2 is enforced in one place rather than in each
 handler.
@@ -706,6 +711,9 @@ UAP-21   Character limits are not enforced by the input itself: a value longer
          limit and the current length.
 UAP-22   A successful filing returns 201 and shows the filed report read-only,
          confirming the case number.
+UAP-23   The reporting agent field opens prefilled with the signed-in user's
+         name. It can be changed before filing, and the report records
+         whatever the field holds when it is submitted.
 ```
 
 ## 14. Implementation order

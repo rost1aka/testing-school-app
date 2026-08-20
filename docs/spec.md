@@ -175,3 +175,6 @@ UAP-21   Character limits are not enforced by the input itself: a value longer
          limit and the current length.
 UAP-22   A successful filing returns 201 and shows the filed report read-only,
          confirming the case number.
+UAP-23   The reporting agent field opens prefilled with the signed-in user's
+         name. It can be changed before filing, and the report records
+         whatever the field holds when it is submitted.

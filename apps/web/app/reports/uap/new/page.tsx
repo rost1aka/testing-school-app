@@ -18,7 +18,7 @@ export default function NewUapReportPage() {
         report cannot be edited, so check it before you submit.
       </p>
       <Suspense fallback={<p className="text-sm text-text-muted">Loading…</p>}>
-        <RequireAuth>{() => <UapReportForm />}</RequireAuth>
+        <RequireAuth>{(profile) => <UapReportForm agentName={profile.name} />}</RequireAuth>
       </Suspense>
     </main>
   );

@@ -50,9 +50,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function UapReportForm() {
+export function UapReportForm({ agentName }: { agentName: string }) {
   const router = useRouter();
-  const [draft, setDraft] = useState<UapReportDraft>(emptyUapReportDraft);
+  // Prefilled with the signed-in agent's name, and editable like any other
+  // field: an agent usually files their own report, but not always. The form
+  // is only ever mounted once the profile has resolved, so the initial state
+  // can carry the name without an effect to fill it in later.
+  const [draft, setDraft] = useState<UapReportDraft>({
+    ...emptyUapReportDraft,
+    reportingAgentName: agentName,
+  });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
