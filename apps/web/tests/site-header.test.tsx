@@ -51,6 +51,19 @@ describe("SiteHeader", () => {
     expect(screen.getByText("Sam Sample")).toBeInTheDocument();
   });
 
+  it("signed in: the user's name links to the profile", () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.getByRole("link", { name: "Sam Sample" })).toHaveAttribute("href", "/profile");
+  });
+
+  it("signed in: offers no separate Profile or Addresses link", () => {
+    useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
+    render(<SiteHeader />);
+    expect(screen.queryByRole("link", { name: "Profile" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Addresses" })).not.toBeInTheDocument();
+  });
+
   it("signed in: shows a Sign out button", () => {
     useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut });
     render(<SiteHeader />);

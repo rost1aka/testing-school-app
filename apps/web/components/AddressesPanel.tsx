@@ -1,25 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { AddressForm } from "../../components/AddressForm";
-import { AddressList } from "../../components/AddressList";
-import { FormErrors } from "../../components/FormErrors";
-import { RequireAuth } from "../../components/RequireAuth";
-import { apiFetch, ApiError } from "../../lib/api";
-import type { Address } from "../../lib/types";
+import { useEffect, useRef, useState } from "react";
+import { apiFetch, ApiError } from "../lib/api";
+import type { Address } from "../lib/types";
+import { AddressForm } from "./AddressForm";
+import { AddressList } from "./AddressList";
+import { FormErrors } from "./FormErrors";
 
-export default function AddressesPage() {
-  return (
-    <main className="mx-auto max-w-xl px-6 py-10">
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-text">Addresses</h1>
-      <Suspense fallback={<p className="text-sm text-text-muted">Loading…</p>}>
-        <RequireAuth>{() => <AddressesPanel />}</RequireAuth>
-      </Suspense>
-    </main>
-  );
-}
-
-function AddressesPanel() {
+export function AddressesPanel() {
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const reloadSeq = useRef(0);

@@ -22,13 +22,9 @@ export function SiteHeader() {
           <nav className="flex items-center gap-4 text-sm text-text-muted">
             {profile ? (
               <>
-                <a href="/profile" className="hover:text-accent">
-                  Profile
+                <a href="/profile" className="text-text hover:text-accent">
+                  {profile.name}
                 </a>
-                <a href="/addresses" className="hover:text-accent">
-                  Addresses
-                </a>
-                <span className="text-text">{profile.name}</span>
                 <button
                   type="button"
                   onClick={onSignOut}
