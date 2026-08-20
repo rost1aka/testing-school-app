@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RegisterForm } from "../components/RegisterForm";
+import { SessionProvider } from "../lib/session";
 
 const push = vi.fn();
 
@@ -20,7 +21,11 @@ function jsonResponse(status: number, body: unknown) {
 
 describe("RegisterForm", () => {
   it("labels all three inputs", () => {
-    render(<RegisterForm />);
+    render(
+      <SessionProvider>
+        <RegisterForm />
+      </SessionProvider>,
+    );
     expect(screen.getByLabelText("Email address")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
@@ -28,7 +33,11 @@ describe("RegisterForm", () => {
 
   it("registers and navigates home", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(201, { id: "usr_1" })));
-    render(<RegisterForm />);
+    render(
+      <SessionProvider>
+        <RegisterForm />
+      </SessionProvider>,
+    );
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.type(screen.getByLabelText("Name"), "Sam Student");
     await userEvent.type(screen.getByLabelText("Password"), "Password123!");
@@ -44,7 +53,11 @@ describe("RegisterForm", () => {
         fieldErrors: { password: ["Must be at least 8 characters", "Must contain a number"] },
       }),
     ));
-    render(<RegisterForm />);
+    render(
+      <SessionProvider>
+        <RegisterForm />
+      </SessionProvider>,
+    );
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.type(screen.getByLabelText("Name"), "Sam Student");
     await userEvent.type(screen.getByLabelText("Password"), "password");
@@ -56,7 +69,11 @@ describe("RegisterForm", () => {
   it("disables the button while the request is in flight", async () => {
     let release: (value: Response) => void = () => {};
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise<Response>((resolve) => { release = resolve; })));
-    render(<RegisterForm />);
+    render(
+      <SessionProvider>
+        <RegisterForm />
+      </SessionProvider>,
+    );
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.type(screen.getByLabelText("Name"), "Sam Student");
     await userEvent.type(screen.getByLabelText("Password"), "Password123!");

@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiFetch, ApiError } from "../lib/api";
+import { useSession } from "../lib/session";
 import type { FieldErrors } from "../lib/types";
 import { Field } from "./Field";
 import { FormErrors } from "./FormErrors";
 
 export function RegisterForm() {
   const router = useRouter();
+  const { refresh } = useSession();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +25,9 @@ export function RegisterForm() {
     setFieldErrors({});
     try {
       await apiFetch("/auth/register", { method: "POST", body: JSON.stringify({ email, name, password }) });
+      // Registering signs the new account in, so the provider has to be told
+      // for the same reason sign-in does.
+      await refresh();
       router.push("/");
     } catch (error) {
       if (error instanceof ApiError) {
