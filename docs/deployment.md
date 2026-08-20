@@ -93,25 +93,45 @@ If registration appears to succeed but leaves you signed out, the cookies were
 rejected — check that `CROSS_SITE_COOKIES` is `true` on `school-api` and that
 `APP_URL` exactly matches the web app's URL, scheme included.
 
-## 5. The shop fills itself
-
-Nothing to do here — this section is what to expect, and where to look when it
-does not happen.
+## 5. Fill the shop
 
 `prisma migrate deploy` creates the catalogue's tables but puts nothing in
-them, so a deployed shop would start empty. The API's start command therefore
-runs `db:seed:catalogue` between the migration and the server, and the service
-log shows a line like:
+them, so a deployed shop starts empty. There are two ways to fill it, and
+which one you want depends on who owns the catalogue's contents.
+
+### By hand, once
+
+From the `school-api` service page, open **Shell** and run:
+
+```bash
+pnpm --filter @school/api db:seed:catalogue
+```
+
+It writes every category and product **by id, in one transaction**, prints
+what it ended with, deletes nothing — accounts, addresses and carts are
+untouched — and running it twice changes nothing. This works whatever the flag
+below is set to, and it is the right choice for any deployment where the
+catalogue is edited somewhere other than the repository.
+
+### On every boot, for a demonstration
+
+`render.yaml` sets `SEED_CATALOGUE_ON_BOOT` to `"true"` on `school-api`, and
+the start command then runs the same seed between the migration and the
+server. The service log shows:
 
 ```
 Catalogue ready: 61 products in 5 categories.
 ```
 
-That seed writes every category and product **by id, in one transaction**. It
-deletes nothing — accounts, addresses and carts are untouched — and running it
-again changes nothing, which is what makes it safe on every boot, including
-the boots a free instance makes each time it wakes from sleeping. A price or a
-sale edited in the code reaches the deployment on its next start.
+A price or a sale edited in the code then reaches the deployment on its next
+start, with no shell step at all.
+
+> **Turn this off for anything but a demonstration.** A start command runs on
+> every *boot*, not every deploy — a free instance boots each time it wakes
+> from sleeping — and the seed updates products it finds, so a product edited
+> anywhere but in the repository is reverted on the next restart. Set the
+> variable to `"false"`, or remove it: with it unset the start command leaves
+> the catalogue alone and says so in the log.
 
 If the seed fails, the API still starts and the log carries:
 
@@ -120,9 +140,9 @@ WARNING - the catalogue seed failed, so the shop will be empty until it succeeds
 ```
 
 An empty catalogue is a worse page, not a broken service, so it is not allowed
-to hold the API down. The usual cause is a `DATABASE_URL` that reaches Postgres
-for the migration but not for the seed — a pooled Neon string rather than the
-direct one.
+to hold the API down — unlike a failed migration, which does stop the boot.
+The usual cause is a `DATABASE_URL` that reaches Postgres for the migration but
+not for the seed: a pooled Neon string rather than the direct one.
 
 ## 6. Create the demo accounts, if you want them
 
@@ -187,8 +207,9 @@ None of the following is a bug. All of it is what "free" buys:
 
 Both services deploy automatically when `main` changes. `school-api` applies
 any new Prisma migration as it starts — that is what the `prisma migrate
-deploy` at the front of its start command does — and then tops the catalogue
-up, so a deploy that adds or reprices products needs nothing else from you.
+deploy` at the front of its start command does — and, while
+`SEED_CATALOGUE_ON_BOOT` is `"true"`, tops the catalogue up as well, so a
+deploy that adds or reprices products needs nothing else from you.
 
 Changing `NEXT_PUBLIC_API_URL` remains the one case that needs a redeploy
 rather than a restart, for the build-time reason given in step 3.
@@ -196,8 +217,9 @@ rather than a restart, for the build-time reason given in step 3.
 ## What this deployment does not have
 
 No custom domain, no staging environment, no automated account seeding (the
-catalogue is seeded on every start; the accounts are not — see step 6), no log
-aggregation and no database backups. Each is a deliberate omission for a free
+catalogue is seeded on every start while `SEED_CATALOGUE_ON_BOOT` is on; the
+accounts never are — see steps 5 and 6), no log aggregation and no database
+backups. Each is a deliberate omission for a free
 demonstration deployment, and each is the obvious next step if this becomes
 something people depend on. Neon's paid tiers add point-in-time restore;
 Render's paid instances stop sleeping and unlock the pre-deploy hook, which is
