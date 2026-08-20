@@ -26,7 +26,20 @@ services:
     # Migrations run here rather than in a preDeployCommand, which is a paid
     # plan feature. The free plan runs a single instance, and Prisma takes an
     # advisory lock regardless, so concurrent migrations are not a concern.
-    startCommand: pnpm --filter @school/api exec prisma migrate deploy && pnpm --filter @school/api exec node dist/main.js
+    #
+    # The catalogue seed runs alongside them, because `migrate deploy` creates
+    # the shop's tables and puts nothing in them — without this a deployed
+    # catalogue is empty. It is safe on every boot: it writes categories and
+    # products by id in one transaction, deletes nothing, and leaves accounts,
+    # addresses and carts untouched. It is also allowed to fail without
+    # taking the API down: an empty catalogue is a worse page, not a broken
+    # service, and the reason is in the log either way.
+    #
+    # The demo accounts are NOT seeded here. `db:seed:accounts` creates only
+    # what is missing and would be safe too, but who may sign in to a
+    # deployment is the operator's decision, not the start command's — see
+    # docs/deployment.md.
+    startCommand: 'pnpm --filter @school/api exec prisma migrate deploy && { pnpm --filter @school/api db:seed:catalogue || echo "WARNING - the catalogue seed failed, so the shop will be empty until it succeeds"; } && pnpm --filter @school/api exec node dist/main.js'
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION

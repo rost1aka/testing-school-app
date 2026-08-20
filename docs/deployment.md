@@ -93,39 +93,58 @@ If registration appears to succeed but leaves you signed out, the cookies were
 rejected — check that `CROSS_SITE_COOKIES` is `true` on `school-api` and that
 `APP_URL` exactly matches the web app's URL, scheme included.
 
-## 5. Seed the demo accounts, once
+## 5. The shop fills itself
 
-Optional, and only useful for a demonstration deployment.
+Nothing to do here — this section is what to expect, and where to look when it
+does not happen.
 
-> **The seed script deletes every existing user and address before inserting
-> its own.** Never run it against a deployment holding real accounts.
+`prisma migrate deploy` creates the catalogue's tables but puts nothing in
+them, so a deployed shop would start empty. The API's start command therefore
+runs `db:seed:catalogue` between the migration and the server, and the service
+log shows a line like:
 
-From the `school-api` service page, open **Shell** and run:
+```
+Catalogue ready: 61 products in 5 categories.
+```
+
+That seed writes every category and product **by id, in one transaction**. It
+deletes nothing — accounts, addresses and carts are untouched — and running it
+again changes nothing, which is what makes it safe on every boot, including
+the boots a free instance makes each time it wakes from sleeping. A price or a
+sale edited in the code reaches the deployment on its next start.
+
+If the seed fails, the API still starts and the log carries:
+
+```
+WARNING - the catalogue seed failed, so the shop will be empty until it succeeds
+```
+
+An empty catalogue is a worse page, not a broken service, so it is not allowed
+to hold the API down. The usual cause is a `DATABASE_URL` that reaches Postgres
+for the migration but not for the seed — a pooled Neon string rather than the
+direct one.
+
+## 6. Create the demo accounts, if you want them
+
+Optional, and only useful for a demonstration deployment. From the
+`school-api` service page, open **Shell** and run:
 
 ```bash
-pnpm --filter @school/api exec tsx prisma/seed.ts
+pnpm --filter @school/api db:seed:accounts
 ```
 
 That creates `student@example.com`, `admin@example.com` and
-`dana@example.com`, all with the password `Password123!`.
+`dana@example.com`, all with the password `Password123!`, and tells you which
+ones it made. It creates only what is missing: an account that already exists
+is left exactly as it is, password included.
 
-This is deliberately manual. Wiring it into the start command would erase the
-database on every single deploy.
+This one is **not** in the start command, on purpose. It is safe to run, but
+who may sign in to a deployment is your decision rather than the start
+command's — and these three accounts share a password published in the README.
 
-## 6. Fill the shop
-
-`prisma migrate deploy` creates the catalogue's tables on every deploy, but it
-puts no products in them — a freshly deployed shop is empty. From the same
-**Shell**, run:
-
-```bash
-pnpm --filter @school/api db:seed:catalogue
-```
-
-It prints how many products it ended up with. Unlike the seed above, this one
-**deletes nothing**: it writes every category and product by id, so accounts,
-addresses and carts are left alone and running it twice changes nothing. Run
-it again after any deploy that adds products.
+> There is also `pnpm --filter @school/api db:reset`, which development uses.
+> **It deletes every user, address, cart and product before re-creating the
+> demo data.** Never point it at a deployment holding real accounts.
 
 ## Sending real email
 
@@ -168,14 +187,16 @@ None of the following is a bug. All of it is what "free" buys:
 
 Both services deploy automatically when `main` changes. `school-api` applies
 any new Prisma migration as it starts — that is what the `prisma migrate
-deploy` at the front of its start command does.
+deploy` at the front of its start command does — and then tops the catalogue
+up, so a deploy that adds or reprices products needs nothing else from you.
 
 Changing `NEXT_PUBLIC_API_URL` remains the one case that needs a redeploy
 rather than a restart, for the build-time reason given in step 3.
 
 ## What this deployment does not have
 
-No custom domain, no staging environment, no automated seeding, no log
+No custom domain, no staging environment, no automated account seeding (the
+catalogue is seeded on every start; the accounts are not — see step 6), no log
 aggregation and no database backups. Each is a deliberate omission for a free
 demonstration deployment, and each is the obvious next step if this becomes
 something people depend on. Neon's paid tiers add point-in-time restore;
