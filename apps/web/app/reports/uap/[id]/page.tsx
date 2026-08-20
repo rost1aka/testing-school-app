@@ -61,6 +61,9 @@ function FiledReport() {
 
   return (
     <>
+      <p className="mb-4 text-sm">
+        <a href="/reports/uap" className="text-accent">&larr; All reports</a>
+      </p>
       {justFiled && (
         <p
           role="status"
@@ -88,10 +91,6 @@ function FiledReport() {
           );
         })}
       </dl>
-
-      <p className="mt-6 text-sm">
-        <a href="/reports/uap" className="text-accent">All reports</a>
-      </p>
     </>
   );
 }
