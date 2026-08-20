@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "../lib/session";
 import { CartBadge } from "./CartBadge";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function SiteHeader() {
   const router = useRouter();
@@ -16,9 +17,14 @@ export function SiteHeader() {
   return (
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-        <a href="/" className="text-sm font-semibold tracking-tight text-text">
-          School App
-        </a>
+        <div className="flex items-center gap-3">
+          <a href="/" className="text-sm font-semibold tracking-tight text-text">
+            School App
+          </a>
+          {/* Beside the wordmark rather than in the navigation: it changes how
+              the whole application looks, not where you are in it. */}
+          <ThemeToggle />
+        </div>
         <nav className="flex items-center gap-4 text-sm text-text-muted">
           {/* The shop and the cart are there for everyone, signed in or not,
               and neither waits on the session: a visitor browsing while the
@@ -48,6 +54,9 @@ export function SiteHeader() {
               </a>
               <a href="/addresses" className="hover:text-accent">
                 Addresses
+              </a>
+              <a href="/reports/uap" className="hover:text-accent">
+                Reports
               </a>
               <span className="text-text">{profile.name}</span>
               <button

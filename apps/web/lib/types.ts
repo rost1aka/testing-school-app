@@ -1,3 +1,5 @@
+import type { UapReportValues } from "@school/shared";
+
 export type FieldErrors = Record<string, string[]>;
 
 export interface UserProfile {
@@ -69,4 +71,20 @@ export interface Address {
   postalCode: string;
   country: string;
   isDefault: boolean;
+}
+
+/** A filed UAP report, in the same shape the form submitted it. */
+export interface UapReport extends UapReportValues {
+  id: string;
+  createdAt: string;
+  amendedAt: string | null;
+}
+
+/** What the list of an agent's own reports carries. */
+export interface UapReportSummary {
+  id: string;
+  caseNumber: string;
+  sightingDate: string;
+  objectShape: string;
+  threatAssessment: string;
 }

@@ -2,12 +2,15 @@
 
 import { borderFor, controlClassName, FieldShell } from "./FieldShell";
 
-export function Field({
-  id, label, type = "text", value, onChange, errors, autoComplete, placeholder, required, inputMode,
+export function DateField({
+  id, label, value, onChange, errors, required,
 }: {
-  id: string; label: string; type?: string; value: string;
-  onChange: (value: string) => void; errors?: string[]; autoComplete?: string; placeholder?: string;
-  required?: boolean; inputMode?: "numeric";
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  errors?: string[];
+  required?: boolean;
 }) {
   const hasErrors = Boolean(errors?.length);
   return (
@@ -15,11 +18,8 @@ export function Field({
       <input
         id={id}
         name={id}
-        type={type}
+        type="date"
         value={value}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-        inputMode={inputMode}
         aria-required={required || undefined}
         aria-invalid={hasErrors || undefined}
         aria-describedby={hasErrors ? `${id}-error` : undefined}

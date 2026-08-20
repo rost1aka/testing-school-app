@@ -40,7 +40,7 @@ export default function HomePage() {
           <div className="flex flex-wrap gap-3">
             <a
               href="/login"
-              className="inline-flex items-center justify-center rounded-card bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+              className="inline-flex items-center justify-center rounded-card bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover"
             >
               Log in
             </a>

@@ -51,7 +51,7 @@ export function ProductCard({
         type="button"
         disabled={adding}
         onClick={() => void add()}
-        className="inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
         {adding ? "Adding…" : "Add to cart"}
       </button>

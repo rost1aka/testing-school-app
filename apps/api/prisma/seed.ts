@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/common/crypto.util";
 import { CATEGORIES, PRODUCTS, categoryIdBySlug, imageUrlFor, productId } from "./catalogue-data";
 import { DEMO_ADDRESSES, DEMO_CREATED_AT, DEMO_PASSWORD, DEMO_USERS } from "./demo-accounts";
+import { DEMO_UAP_REPORTS } from "./uap-reports-data";
 
 const prisma = new PrismaClient();
 
@@ -17,6 +18,7 @@ async function main() {
   await prisma.productCategory.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
+  await prisma.uapReport.deleteMany();
   await prisma.address.deleteMany();
   await prisma.user.deleteMany();
 
@@ -27,6 +29,8 @@ async function main() {
   });
 
   await prisma.address.createMany({ data: DEMO_ADDRESSES });
+
+  await prisma.uapReport.createMany({ data: DEMO_UAP_REPORTS });
 
   await prisma.category.createMany({ data: CATEGORIES });
 

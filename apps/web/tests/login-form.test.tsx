@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "../components/LoginForm";
+import { SessionProvider } from "../lib/session";
 
 const push = vi.fn();
 let search = "";
@@ -23,14 +24,22 @@ function jsonResponse(status: number, body: unknown) {
 
 describe("LoginForm", () => {
   it("labels both inputs", () => {
-    render(<LoginForm />);
+    render(
+      <SessionProvider>
+        <LoginForm />
+      </SessionProvider>,
+    );
     expect(screen.getByLabelText("Email address")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
   });
 
   it("signs in and navigates home", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(200, {})));
-    render(<LoginForm />);
+    render(
+      <SessionProvider>
+        <LoginForm />
+      </SessionProvider>,
+    );
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "Password123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -41,7 +50,11 @@ describe("LoginForm", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
       jsonResponse(401, { code: "INVALID_CREDENTIALS", message: "Email or password is incorrect", fieldErrors: null }),
     ));
-    render(<LoginForm />);
+    render(
+      <SessionProvider>
+        <LoginForm />
+      </SessionProvider>,
+    );
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "WrongPassword1");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -51,7 +64,11 @@ describe("LoginForm", () => {
   it("disables the button while the request is in flight", async () => {
     let release: (value: Response) => void = () => {};
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise<Response>((resolve) => { release = resolve; })));
-    render(<LoginForm />);
+    render(
+      <SessionProvider>
+        <LoginForm />
+      </SessionProvider>,
+    );
     await userEvent.type(screen.getByLabelText("Email address"), "sam@example.com");
     await userEvent.type(screen.getByLabelText("Password"), "Password123!");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));

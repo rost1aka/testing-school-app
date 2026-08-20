@@ -2,8 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * The palette, once per theme. Components never name a colour — they name a
+ * token — so a theme is this block and nothing else.
+ *
+ * Values are space-separated RGB channels rather than hex, because the Tailwind
+ * config wraps them as `rgb(var(--token) / <alpha-value>)`. That is what keeps
+ * `bg-danger/10` and `border-accent/30` working: a hex custom property would
+ * silently ignore the opacity modifier.
+ *
+ * `color-scheme` is not decoration. It tells the browser to render the controls
+ * it draws itself — the date picker, checkboxes, scrollbars — in the matching
+ * theme. Without it a dark page keeps a white calendar popup and black glyphs.
+ */
+:root {
+  color-scheme: light;
+
+  --color-canvas: 255 255 255;
+  --color-surface: 255 255 255;
+  --color-surface-muted: 241 245 249;
+  --color-border: 203 213 225;
+  --color-text: 15 23 42;
+  --color-text-muted: 100 116 139;
+  --color-accent: 79 70 229;
+  --color-accent-hover: 67 56 202;
+  --color-accent-foreground: 255 255 255;
+  --color-danger: 220 38 38;
+  --color-danger-foreground: 255 255 255;
+  --color-success: 22 163 74;
+}
+
+/*
+ * The dark palette is not the light one inverted. The accent has to lighten to
+ * stay legible as a link on a dark surface, which then makes white text on top
+ * of it unreadable — so the text that sits *on* the accent darkens instead.
+ * Hence the foreground tokens: a solid button is indigo with white text in one
+ * theme and light indigo with near-black text in the other.
+ *
+ * Declared twice on purpose: once for readers whose system asks for dark and
+ * who have not chosen otherwise, and once for readers who chose dark
+ * explicitly. Neither block may be the only definition of a colour.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --color-canvas: 2 6 23;
+    --color-surface: 15 23 42;
+    --color-surface-muted: 30 41 59;
+    --color-border: 51 65 85;
+    --color-text: 226 232 240;
+    --color-text-muted: 148 163 184;
+    --color-accent: 129 140 248;
+    --color-accent-hover: 165 180 252;
+    --color-accent-foreground: 15 23 42;
+    --color-danger: 248 113 113;
+    --color-danger-foreground: 15 23 42;
+    --color-success: 74 222 128;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-canvas: 2 6 23;
+  --color-surface: 15 23 42;
+  --color-surface-muted: 30 41 59;
+  --color-border: 51 65 85;
+  --color-text: 226 232 240;
+  --color-text-muted: 148 163 184;
+  --color-accent: 129 140 248;
+  --color-accent-hover: 165 180 252;
+  --color-accent-foreground: 15 23 42;
+  --color-danger: 248 113 113;
+  --color-danger-foreground: 15 23 42;
+  --color-success: 74 222 128;
+}
+
 body {
-  @apply min-h-screen bg-surface text-text;
+  /* The page sits a shade behind its cards, so a card still reads as a card
+     once the shadow stops being visible against a dark ground. In the light
+     theme the two are the same white, as they always were. */
+  @apply min-h-screen bg-canvas text-text;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
