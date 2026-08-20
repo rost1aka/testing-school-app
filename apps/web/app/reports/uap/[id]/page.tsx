@@ -115,7 +115,7 @@ function FiledReport() {
               type="button"
               onClick={onDelete}
               disabled={deleting}
-              className="inline-flex items-center justify-center rounded-md bg-danger px-3 py-1.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-md bg-danger px-3 py-1.5 text-sm font-medium text-danger-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60"
             >
               {deleting ? "Deleting…" : "Yes, delete"}
             </button>

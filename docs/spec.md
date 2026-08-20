@@ -111,6 +111,21 @@ HOME-02  The home page also shows the catalogue, with the same products,
          search, filters, sorting and pagination as the catalogue page, and
          shows it whether or not anyone is signed in.
 
+## Appearance
+
+THEME-01 The application follows the operating system's colour scheme until
+         the reader chooses otherwise. The header offers a control that
+         switches between the light and the dark theme, and offers it whether
+         or not anyone is signed in.
+THEME-02 A chosen theme persists across navigation, a reload and a later
+         visit, and overrides the operating system's preference in both
+         directions.
+THEME-03 A stored theme is applied before the first paint, so no page is
+         shown briefly in the other theme.
+THEME-04 Every colour comes from the shared palette rather than being named in
+         a component, so no element keeps a colour that works in only one of
+         the themes.
+
 ## UAP incident report
 
 UAP-01   Filing, listing and reading UAP incident reports requires a signed-in

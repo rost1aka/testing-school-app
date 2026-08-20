@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useSession } from "../lib/session";
 import { CartBadge } from "./CartBadge";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function SiteHeader() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export function SiteHeader() {
             Catalogue
           </a>
           <CartBadge />
+          <ThemeToggle />
           {loading ? (
             // Placeholders rather than nothing: the session request can take
             // up to a minute against a sleeping API, and an empty space for
