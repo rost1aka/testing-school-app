@@ -26,7 +26,33 @@ services:
     # Migrations run here rather than in a preDeployCommand, which is a paid
     # plan feature. The free plan runs a single instance, and Prisma takes an
     # advisory lock regardless, so concurrent migrations are not a concern.
-    startCommand: pnpm --filter @school/api exec prisma migrate deploy && pnpm --filter @school/api exec node dist/main.js
+    #
+    # The catalogue seed can run alongside them, because `migrate deploy`
+    # creates the shop's tables and puts nothing in them — without it a
+    # deployed catalogue is empty. It is gated on SEED_CATALOGUE_ON_BOOT
+    # rather than being unconditional, because "the running code owns the
+    # catalogue's contents" is true of *this* demonstration and false of most
+    # deployments: a start command re-runs on every boot, not every deploy —
+    # a free instance boots each time it wakes — and an unconditional seed
+    # would also overwrite whatever an admin had edited. The flag makes that
+    # a decision about one environment instead of a property of the code.
+    #
+    # It is allowed to fail without taking the API down: an empty catalogue is
+    # a worse page, not a broken service, and the reason is in the log either
+    # way. A failed migration still stops the boot.
+    #
+    # The demo accounts are NOT seeded here at all. `db:seed:accounts` creates
+    # only what is missing and would be safe too, but who may sign in to a
+    # deployment is the operator's decision — see docs/deployment.md.
+    startCommand: >-
+      pnpm --filter @school/api exec prisma migrate deploy &&
+      if [ "$SEED_CATALOGUE_ON_BOOT" = "true" ]; then
+      pnpm --filter @school/api db:seed:catalogue ||
+      echo "WARNING - the catalogue seed failed, so the shop will be empty until it succeeds";
+      else
+      echo "SEED_CATALOGUE_ON_BOOT is not true, so the catalogue was left alone";
+      fi &&
+      pnpm --filter @school/api exec node dist/main.js
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
@@ -38,6 +64,13 @@ services:
       # the session cookies need SameSite=None; Secure or sign-in silently
       # fails. See apps/api/src/common/config.ts.
       - key: CROSS_SITE_COOKIES
+        value: "true"
+      # This deployment is a demonstration whose catalogue is whatever the
+      # code says it is, so it is seeded on every boot. Turn this off (or drop
+      # it) for a deployment whose products are edited anywhere but in the
+      # repository — otherwise a restart reverts those edits. The seed can
+      # still be run by hand from the service shell at any time.
+      - key: SEED_CATALOGUE_ON_BOOT
         value: "true"
       - key: JWT_SECRET
         generateValue: true

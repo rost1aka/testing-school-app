@@ -93,39 +93,78 @@ If registration appears to succeed but leaves you signed out, the cookies were
 rejected — check that `CROSS_SITE_COOKIES` is `true` on `school-api` and that
 `APP_URL` exactly matches the web app's URL, scheme included.
 
-## 5. Seed the demo accounts, once
+## 5. Fill the shop
 
-Optional, and only useful for a demonstration deployment.
+`prisma migrate deploy` creates the catalogue's tables but puts nothing in
+them, so a deployed shop starts empty. There are two ways to fill it, and
+which one you want depends on who owns the catalogue's contents.
 
-> **The seed script deletes every existing user and address before inserting
-> its own.** Never run it against a deployment holding real accounts.
+### By hand, once
 
 From the `school-api` service page, open **Shell** and run:
-
-```bash
-pnpm --filter @school/api exec tsx prisma/seed.ts
-```
-
-That creates `student@example.com`, `admin@example.com` and
-`dana@example.com`, all with the password `Password123!`.
-
-This is deliberately manual. Wiring it into the start command would erase the
-database on every single deploy.
-
-## 6. Fill the shop
-
-`prisma migrate deploy` creates the catalogue's tables on every deploy, but it
-puts no products in them — a freshly deployed shop is empty. From the same
-**Shell**, run:
 
 ```bash
 pnpm --filter @school/api db:seed:catalogue
 ```
 
-It prints how many products it ended up with. Unlike the seed above, this one
-**deletes nothing**: it writes every category and product by id, so accounts,
-addresses and carts are left alone and running it twice changes nothing. Run
-it again after any deploy that adds products.
+It writes every category and product **by id, in one transaction**, prints
+what it ended with, deletes nothing — accounts, addresses and carts are
+untouched — and running it twice changes nothing. This works whatever the flag
+below is set to, and it is the right choice for any deployment where the
+catalogue is edited somewhere other than the repository.
+
+### On every boot, for a demonstration
+
+`render.yaml` sets `SEED_CATALOGUE_ON_BOOT` to `"true"` on `school-api`, and
+the start command then runs the same seed between the migration and the
+server. The service log shows:
+
+```
+Catalogue ready: 61 products in 5 categories.
+```
+
+A price or a sale edited in the code then reaches the deployment on its next
+start, with no shell step at all.
+
+> **Turn this off for anything but a demonstration.** A start command runs on
+> every *boot*, not every deploy — a free instance boots each time it wakes
+> from sleeping — and the seed updates products it finds, so a product edited
+> anywhere but in the repository is reverted on the next restart. Set the
+> variable to `"false"`, or remove it: with it unset the start command leaves
+> the catalogue alone and says so in the log.
+
+If the seed fails, the API still starts and the log carries:
+
+```
+WARNING - the catalogue seed failed, so the shop will be empty until it succeeds
+```
+
+An empty catalogue is a worse page, not a broken service, so it is not allowed
+to hold the API down — unlike a failed migration, which does stop the boot.
+The usual cause is a `DATABASE_URL` that reaches Postgres for the migration but
+not for the seed: a pooled Neon string rather than the direct one.
+
+## 6. Create the demo accounts, if you want them
+
+Optional, and only useful for a demonstration deployment. From the
+`school-api` service page, open **Shell** and run:
+
+```bash
+pnpm --filter @school/api db:seed:accounts
+```
+
+That creates `student@example.com`, `admin@example.com` and
+`dana@example.com`, all with the password `Password123!`, and tells you which
+ones it made. It creates only what is missing: an account that already exists
+is left exactly as it is, password included.
+
+This one is **not** in the start command, on purpose. It is safe to run, but
+who may sign in to a deployment is your decision rather than the start
+command's — and these three accounts share a password published in the README.
+
+> There is also `pnpm --filter @school/api db:reset`, which development uses.
+> **It deletes every user, address, cart and product before re-creating the
+> demo data.** Never point it at a deployment holding real accounts.
 
 ## Sending real email
 
@@ -168,15 +207,19 @@ None of the following is a bug. All of it is what "free" buys:
 
 Both services deploy automatically when `main` changes. `school-api` applies
 any new Prisma migration as it starts — that is what the `prisma migrate
-deploy` at the front of its start command does.
+deploy` at the front of its start command does — and, while
+`SEED_CATALOGUE_ON_BOOT` is `"true"`, tops the catalogue up as well, so a
+deploy that adds or reprices products needs nothing else from you.
 
 Changing `NEXT_PUBLIC_API_URL` remains the one case that needs a redeploy
 rather than a restart, for the build-time reason given in step 3.
 
 ## What this deployment does not have
 
-No custom domain, no staging environment, no automated seeding, no log
-aggregation and no database backups. Each is a deliberate omission for a free
+No custom domain, no staging environment, no automated account seeding (the
+catalogue is seeded on every start while `SEED_CATALOGUE_ON_BOOT` is on; the
+accounts never are — see steps 5 and 6), no log aggregation and no database
+backups. Each is a deliberate omission for a free
 demonstration deployment, and each is the obvious next step if this becomes
 something people depend on. Neon's paid tiers add point-in-time restore;
 Render's paid instances stop sleeping and unlock the pre-deploy hook, which is

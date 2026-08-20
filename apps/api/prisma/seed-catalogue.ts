@@ -15,49 +15,60 @@ import { CATEGORIES, PRODUCTS, categoryIdBySlug, imageUrlFor, productId } from "
  * carts. Every row is written by id, so running it twice leaves the same
  * catalogue rather than a doubled one, and running it against a deployment
  * people are already using is safe. `prisma migrate deploy` creates the
- * tables; this is what puts products in them.
+ * tables; this is what puts products in them, and it runs on every boot of a
+ * deployed API.
  */
 const prisma = new PrismaClient();
 
 async function main() {
-  for (const category of CATEGORIES) {
-    await prisma.category.upsert({
-      where: { id: category.id },
-      update: { slug: category.slug, name: category.name },
-      create: category,
-    });
-  }
+  // One batch rather than 143 separate round trips. A deployed instance runs
+  // this every time it starts — and a free instance starts every time it
+  // wakes from sleeping — so the difference is felt on every cold start.
+  // Ordering inside the batch matters: a ProductCategory row cannot be
+  // written before the category and the product it points at.
+  await prisma.$transaction([
+    ...CATEGORIES.map((category) =>
+      prisma.category.upsert({
+        where: { id: category.id },
+        update: { slug: category.slug, name: category.name },
+        create: category,
+      }),
+    ),
 
-  for (const product of PRODUCTS) {
-    const id = productId(product.slug);
-    const fields = {
-      slug: product.slug,
-      name: product.name,
-      description: `${product.name} from the school shop.`,
-      priceCents: product.priceCents,
-      discountPercent: product.discountPercent ?? 0,
-      imageUrl: imageUrlFor(product.slug),
-      stock: product.stock,
-    };
+    ...PRODUCTS.map((product) => {
+      const id = productId(product.slug);
+      const fields = {
+        slug: product.slug,
+        name: product.name,
+        description: `${product.name} from the school shop.`,
+        priceCents: product.priceCents,
+        discountPercent: product.discountPercent ?? 0,
+        imageUrl: imageUrlFor(product.slug),
+        stock: product.stock,
+      };
 
-    await prisma.product.upsert({
-      where: { id },
-      update: fields,
-      create: { id, ...fields },
-    });
+      // The catalogue's contents follow the code, so an existing product is
+      // updated: a price or a sale changed here reaches a deployment on its
+      // next start. Stock is part of that — this is a fixture's fixed
+      // catalogue, not a live inventory.
+      return prisma.product.upsert({ where: { id }, update: fields, create: { id, ...fields } });
+    }),
 
-    for (const slug of product.categories) {
-      const categoryId = categoryIdBySlug.get(slug)!;
-      await prisma.productCategory.upsert({
-        where: { productId_categoryId: { productId: id, categoryId } },
-        update: {},
-        create: { productId: id, categoryId },
-      });
-    }
-  }
+    ...PRODUCTS.flatMap((product) =>
+      product.categories.map((slug) => {
+        const productKey = productId(product.slug);
+        const categoryId = categoryIdBySlug.get(slug)!;
+        return prisma.productCategory.upsert({
+          where: { productId_categoryId: { productId: productKey, categoryId } },
+          update: {},
+          create: { productId: productKey, categoryId },
+        });
+      }),
+    ),
+  ]);
 
-  // Printed because the usual place to run this is a deployment's shell,
-  // where the only evidence anything happened is what it says.
+  // Printed because one place this runs is a deployment's start command,
+  // where the log is the only evidence it happened at all.
   const [categories, products] = await Promise.all([
     prisma.category.count(),
     prisma.product.count(),
