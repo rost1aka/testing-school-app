@@ -49,6 +49,9 @@ export function SiteHeader() {
               <a href="/addresses" className="hover:text-accent">
                 Addresses
               </a>
+              <a href="/reports/uap" className="hover:text-accent">
+                Reports
+              </a>
               <span className="text-text">{profile.name}</span>
               <button
                 type="button"

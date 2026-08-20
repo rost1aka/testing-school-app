@@ -25,6 +25,7 @@ model User {
   resetTokens   PasswordResetToken[]
   addresses     Address[]
   cart          Cart?
+  uapReports    UapReport[]
 }
 
 model RefreshToken {
@@ -71,11 +72,11 @@ model Category {
 }
 
 model Product {
-  id          String @id
-  slug        String @unique
-  name        String
-  description String
-  priceCents  Int
+  id              String @id
+  slug            String @unique
+  name            String
+  description     String
+  priceCents      Int
   // A sale, as a whole percentage off the list price; 0 means "no sale".
   // What a product actually costs is derived from these two columns and
   // never stored, so ending a sale changes every cart holding the product.
@@ -101,7 +102,7 @@ model ProductCategory {
 }
 
 model Cart {
-  id String @id @default(cuid())
+  id     String  @id @default(cuid())
   // Exactly one of these identifies a cart: `userId` once it belongs to an
   // account, `token` while it belongs to a browser nobody has signed in on.
   // Signing in moves the browser's cart onto the account, which is why both
@@ -123,4 +124,134 @@ model CartLine {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([cartId])
+}
+
+// ---------------------------------------------------------------------------
+// Form FD-302-UAP. Every conditionally-applicable field is nullable, because a
+// valid report may legitimately lack it; every unconditionally-required field
+// is not, so the database refuses a report the schema should have caught.
+
+enum FieldOffice {
+  ALBUQUERQUE
+  ANCHORAGE
+  LAS_VEGAS
+  LOS_ANGELES
+  ROSWELL
+  SEATTLE
+  WASHINGTON_DC
+}
+
+enum ObjectShape {
+  DISC
+  TRIANGLE
+  CIGAR
+  ORB
+  TIC_TAC
+  OTHER
+}
+
+enum ObjectCount {
+  ONE
+  TWO_TO_FIVE
+  SIX_TO_TWENTY
+  TOO_MANY
+}
+
+enum ObservationDuration {
+  UNDER_1_MIN
+  ONE_TO_5_MIN
+  FIVE_TO_30_MIN
+  OVER_30_MIN
+}
+
+enum EstimatedAltitude {
+  TREETOP
+  BELOW_CLOUD
+  ABOVE_CLOUD
+  ORBITAL
+  UNKNOWN
+}
+
+enum EvidenceType {
+  PHOTOGRAPHIC
+  RADAR
+  PHYSICAL_DEBRIS
+  BIOLOGICAL_SAMPLE
+  AUDIO
+}
+
+enum StorageLocation {
+  QUANTICO_LAB
+  HANGAR_18
+  FIELD_OFFICE_SAFE
+}
+
+enum EncounterClass {
+  CE1
+  CE2
+  CE3
+  CE4
+}
+
+enum MedicalEvaluation {
+  SCHEDULED
+  COMPLETED
+  DECLINED
+}
+
+enum ThreatLevel {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum ClassificationLevel {
+  UNCLASSIFIED
+  CONFIDENTIAL
+  SECRET
+  TOP_SECRET
+}
+
+model UapReport {
+  id                      String              @id @default(cuid())
+  userId                  String
+  // Unique across the Bureau rather than per agent: a case number identifies
+  // a case, not a row in one agent's folder.
+  caseNumber              String              @unique
+  reportingAgentName      String
+  badgeNumber             String
+  fieldOffice             FieldOffice
+  sightingDate            DateTime            @db.Date
+  reportFiledDate         DateTime            @db.Date
+  sightingLocation        String
+  objectShape             ObjectShape
+  objectShapeOther        String?
+  objectCount             ObjectCount
+  observationDuration     ObservationDuration
+  estimatedAltitude       EstimatedAltitude?
+  narrative               String
+  evidenceCollected       EvidenceType[]
+  debrisCustodyChain      String?
+  debrisStorageLocation   StorageLocation?
+  mediaReferenceIds       String?
+  civilianWitnesses       Boolean             @default(false)
+  witnessCount            Int?
+  witnessStatement        String?
+  encounterClass          EncounterClass
+  physicalEffects         String?
+  occupantDescription     String?
+  missingTimeMinutes      Int?
+  medicalEvaluation       MedicalEvaluation?
+  threatAssessment        ThreatLevel
+  escalationJustification String?
+  classificationLevel     ClassificationLevel
+  notifyBureauLeadership  Boolean             @default(false)
+  additionalRemarks       String?
+  certified               Boolean
+  createdAt               DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
