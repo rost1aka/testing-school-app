@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   CLASSIFICATION_LEVELS,
   clearInapplicable,
-  emptyUapReportDraft,
   ENCOUNTER_CLASSES,
   ESTIMATED_ALTITUDES,
   EVIDENCE_TYPES,
@@ -50,16 +49,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function UapReportForm({ agentName }: { agentName: string }) {
+/**
+ * Files a new report, or amends one that already exists when given its id.
+ * The two differ only in where the draft starts and which request saves it —
+ * every rule, every message and every conditional field behaves identically,
+ * because an amendment has to satisfy what a first filing satisfied.
+ */
+export function UapReportForm({
+  initialDraft,
+  reportId,
+}: {
+  initialDraft: UapReportDraft;
+  reportId?: string;
+}) {
   const router = useRouter();
-  // Prefilled with the signed-in agent's name, and editable like any other
-  // field: an agent usually files their own report, but not always. The form
-  // is only ever mounted once the profile has resolved, so the initial state
-  // can carry the name without an effect to fill it in later.
-  const [draft, setDraft] = useState<UapReportDraft>({
-    ...emptyUapReportDraft,
-    reportingAgentName: agentName,
-  });
+  const amending = reportId !== undefined;
+  const [draft, setDraft] = useState<UapReportDraft>(initialDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -108,11 +113,14 @@ export function UapReportForm({ agentName }: { agentName: string }) {
 
     setSubmitting(true);
     try {
-      const report = await apiFetch<UapReport>("/reports/uap", {
-        method: "POST",
-        body: JSON.stringify(toSubmission(draft)),
-      });
-      router.push(`/reports/uap/${report.id}?filed=1`);
+      const report = await apiFetch<UapReport>(
+        amending ? `/reports/uap/${reportId}` : "/reports/uap",
+        {
+          method: amending ? "PATCH" : "POST",
+          body: JSON.stringify(toSubmission(draft)),
+        },
+      );
+      router.push(`/reports/uap/${report.id}?${amending ? "saved" : "filed"}=1`);
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
@@ -137,7 +145,12 @@ export function UapReportForm({ agentName }: { agentName: string }) {
   return (
     <form onSubmit={onSubmit} noValidate>
       <FormErrors message={message} />
-      <ValidationSummary fieldErrors={fieldErrors} labels={UAP_LABELS} order={UAP_FIELD_NAMES} />
+      <ValidationSummary
+        fieldErrors={fieldErrors}
+        labels={UAP_LABELS}
+        order={UAP_FIELD_NAMES}
+        lead={amending ? "Your changes were not saved." : "This report was not filed."}
+      />
 
       <Section title="Case identification">
         <Field
@@ -461,7 +474,13 @@ export function UapReportForm({ agentName }: { agentName: string }) {
         disabled={submitting}
         className="mt-4 inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {submitting ? "Filing…" : "File report"}
+        {submitting
+          ? amending
+            ? "Saving…"
+            : "Filing…"
+          : amending
+            ? "Save changes"
+            : "File report"}
       </button>
     </form>
   );

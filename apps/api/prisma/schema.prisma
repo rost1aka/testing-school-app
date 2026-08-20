@@ -250,6 +250,9 @@ model UapReport {
   additionalRemarks       String?
   certified               Boolean
   createdAt               DateTime            @default(now())
+  // Null until the report is first amended, so "never edited" stays a
+  // distinct state rather than a timestamp that happens to equal createdAt.
+  amendedAt               DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

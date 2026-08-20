@@ -8,11 +8,12 @@ import { focusField } from "../FieldShell";
  * messages beside the fields can all be below the fold.
  */
 export function ValidationSummary({
-  fieldErrors, labels, order,
+  fieldErrors, labels, order, lead = "This report was not filed.",
 }: {
   fieldErrors: Record<string, string[]>;
   labels: Record<string, string>;
   order: readonly string[];
+  lead?: string;
 }) {
   const invalid = order.filter((field) => fieldErrors[field]?.length);
   if (invalid.length === 0) return null;
@@ -25,7 +26,7 @@ export function ValidationSummary({
       className="mb-6 rounded-md border border-danger/30 bg-danger/10 px-4 py-3"
     >
       <p className="text-sm font-medium text-danger">
-        This report was not filed.{" "}
+        {lead}{" "}
         {invalid.length === 1 ? "1 field needs" : `${invalid.length} fields need`} your attention.
       </p>
       <ul className="mt-2 space-y-1 text-sm text-danger">

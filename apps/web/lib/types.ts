@@ -77,6 +77,7 @@ export interface Address {
 export interface UapReport extends UapReportValues {
   id: string;
   createdAt: string;
+  amendedAt: string | null;
 }
 
 /** What the list of an agent's own reports carries. */

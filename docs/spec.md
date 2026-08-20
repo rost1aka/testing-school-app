@@ -117,7 +117,9 @@ UAP-01   Filing, listing and reading UAP incident reports requires a signed-in
          user. An unauthenticated request returns 401.
 UAP-02   A report belongs to the agent who filed it. Listing returns only that
          agent's reports, and requesting another agent's report returns 403.
-UAP-03   A filed report cannot be edited or deleted.
+UAP-03   A filed report can be amended or deleted, by the agent who filed it
+         and by nobody else. Amending or deleting another agent's report
+         returns 403, and either returns 404 when no such report exists.
 UAP-04   The form requires a case number, reporting agent name, badge number,
          field office, sighting date, report date, sighting location, object
          shape, object count, observation duration, narrative, encounter
@@ -178,3 +180,21 @@ UAP-22   A successful filing returns 201 and shows the filed report read-only,
 UAP-23   The reporting agent field opens prefilled with the signed-in user's
          name. It can be changed before filing, and the report records
          whatever the field holds when it is submitted.
+UAP-24   An amendment is validated exactly as a first filing is: the same
+         required fields, the same limits and the same conditional rules. A
+         report cannot be amended into a state it could not have been filed
+         in.
+UAP-25   The amendment form opens holding the filed report, including every
+         conditional field the stored answers reveal. A rejected amendment
+         reports its fields the way a rejected filing does, and says that the
+         changes were not saved rather than that the report was not filed.
+UAP-26   Changing a report's case number to one already on file returns 409.
+         Leaving its own case number unchanged is not a conflict.
+UAP-27   A report records when it was amended. A report that has never been
+         amended says nothing about it.
+UAP-28   Deleting asks for confirmation before it acts. Cancelling leaves the
+         report untouched. Confirming removes it, returns 204, and the report
+         is then absent from the agent's list, returns 404 when requested, and
+         its case number is free to be used again.
+UAP-29   Both forms offer a way out without submitting: filing offers the list
+         of reports, and amending offers the report being amended.

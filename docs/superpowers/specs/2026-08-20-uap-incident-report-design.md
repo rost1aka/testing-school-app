@@ -26,18 +26,22 @@ domain depends on it.
 In scope:
 
 - A new database model, `UapReport`, owned by the user who files it.
-- Three API routes: create a report, list the agent's own reports, read one.
+- Five API routes: create a report, list the agent's own reports, read one,
+  amend one, delete one.
 - One shared validation schema in `@school/shared`, used unchanged by both
   the API and the browser.
-- Three web routes: a list, the form, and a read-only view of a filed report.
+- Four web routes: a list, the form, a read-only view of a filed report, and
+  the same form again for amending one.
 - A set of reusable form controls — select, textarea, checkbox, checkbox
   group, radio group, date — alongside the existing `Field` component.
 - Spec clauses added to `docs/spec.md`.
 
+A filed report was originally immutable, and that is no longer true: amending
+and deleting were added afterwards, at the product owner's request. Section 15
+records what the earlier decision was and why it was reversed.
+
 Out of scope, deliberately:
 
-- **Editing and deleting.** A filed report is immutable. This removes a large
-  amount of surface without removing anything interesting to test.
 - **Drafts and autosave.** The form holds its state in memory only. Navigating
   away loses it, and no warning is shown.
 - **Attachments.** Evidence is described in text; no file is uploaded.
@@ -522,6 +526,9 @@ model UapReport {
   additionalRemarks       String?
   certified               Boolean
   createdAt               DateTime             @default(now())
+  // Null until the report is first amended, so "never edited" stays a
+  // distinct state rather than a timestamp that happens to equal createdAt.
+  amendedAt               DateTime?
   user                    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -551,6 +558,8 @@ in its entirety. Routes live under `/reports/uap`.
 | `POST` | `/reports/uap` | `201` with the created report | Body validated by `new ZodValidationPipe(uapReportSchema)` |
 | `GET` | `/reports/uap` | `200` with an array | The signed-in agent's own reports, newest first |
 | `GET` | `/reports/uap/:id` | `200` with one report | Only the agent's own |
+| `PATCH` | `/reports/uap/:id` | `200` with the amended report | A full replacement, validated by the same schema; stamps `amendedAt` |
+| `DELETE` | `/reports/uap/:id` | `204` | Frees the case number |
 
 Failure responses, all in the existing envelope:
 
@@ -567,7 +576,17 @@ which already chose `403` for reaching another user's data.
 
 The uniqueness check is done by catching Prisma's unique-constraint violation
 on insert rather than by reading first and then writing, so two simultaneous
-reports claiming one case number cannot both succeed.
+reports claiming one case number cannot both succeed. An amendment catches the
+same violation, and one helper decides what a failed write means so create,
+amend and delete cannot disagree: `P2002` is the taken case number, and `P2025`
+— the row vanishing between the ownership check and the write — is a `404`,
+because at that point it is gone rather than forbidden.
+
+`PATCH` is a full replacement rather than a partial patch. The form loads the
+whole report, so it sends the whole report back, and one schema then validates
+an amendment exactly as it validates a first filing. A partial patch would
+need its own schema and its own answer to what a conditional rule means when
+the field it depends on is absent from the body.
 
 ## 11. Web tier
 
@@ -577,18 +596,25 @@ reports claiming one case number cannot both succeed.
 |---|---|
 | `/reports/uap` | The agent's filed reports — case number, sighting date, shape, threat level — and a link to file a new one. Empty state: "No reports on file." |
 | `/reports/uap/new` | The form. |
-| `/reports/uap/{id}` | One filed report, read-only. Conditional fields that do not apply are omitted rather than shown empty. |
+| `/reports/uap/{id}` | One filed report, read-only, with Edit and Delete. Conditional fields that do not apply are omitted rather than shown empty. |
+| `/reports/uap/{id}/edit` | The same form, holding the filed report. |
 
-All three sit behind `RequireAuth`, as `/profile` and `/addresses` do. The
+All four sit behind `RequireAuth`, as `/profile` and `/addresses` do. The
 header gains a "Reports" link for signed-in agents, alongside the existing
-ones.
+ones. Every page that is not the list offers the way back out at the top:
+the two forms and the report itself, so no page is a dead end.
+
+Deleting is the one irreversible action here, and there is no undo, so the
+button asks before it acts rather than acting on one click.
 
 ### 11.2 Components
 
 New, under `apps/web/components/uap/`:
 
 - `UapReportForm.tsx` — owns the draft state, the "has been submitted once"
-  flag, the per-field error map and the submit sequence.
+  flag, the per-field error map and the submit sequence. Given a report id it
+  amends that report; without one it files a new one. The two differ only in
+  where the draft starts and which request saves it.
 - `ValidationSummary.tsx` — the `role="alert"` block from section 7.2, taking
   the error map and the labels, rendering the count and the list of links.
 
@@ -653,7 +679,9 @@ UAP-01   Filing, listing and reading UAP incident reports requires a signed-in
          user. An unauthenticated request returns 401.
 UAP-02   A report belongs to the agent who filed it. Listing returns only that
          agent's reports, and requesting another agent's report returns 403.
-UAP-03   A filed report cannot be edited or deleted.
+UAP-03   A filed report can be amended or deleted, by the agent who filed it
+         and by nobody else. Amending or deleting another agent's report
+         returns 403, and either returns 404 when no such report exists.
 UAP-04   The form requires a case number, reporting agent name, badge number,
          field office, sighting date, report date, sighting location, object
          shape, object count, observation duration, narrative, encounter
@@ -714,6 +742,24 @@ UAP-22   A successful filing returns 201 and shows the filed report read-only,
 UAP-23   The reporting agent field opens prefilled with the signed-in user's
          name. It can be changed before filing, and the report records
          whatever the field holds when it is submitted.
+UAP-24   An amendment is validated exactly as a first filing is: the same
+         required fields, the same limits and the same conditional rules. A
+         report cannot be amended into a state it could not have been filed
+         in.
+UAP-25   The amendment form opens holding the filed report, including every
+         conditional field the stored answers reveal. A rejected amendment
+         reports its fields the way a rejected filing does, and says that the
+         changes were not saved rather than that the report was not filed.
+UAP-26   Changing a report's case number to one already on file returns 409.
+         Leaving its own case number unchanged is not a conflict.
+UAP-27   A report records when it was amended. A report that has never been
+         amended says nothing about it.
+UAP-28   Deleting asks for confirmation before it acts. Cancelling leaves the
+         report untouched. Confirming removes it, returns 204, and the report
+         is then absent from the agent's list, returns 404 when requested, and
+         its case number is free to be used again.
+UAP-29   Both forms offer a way out without submitting: filing offers the list
+         of reports, and amending offers the report being amended.
 ```
 
 ## 14. Implementation order
@@ -746,5 +792,11 @@ for the rest of the design:
   and less realistic.
 - **No draft saving.** The most likely first follow-up, and the reason the
   draft type is a plain serialisable object with no `null`s in it.
-- **Immutability.** Amending a filed report by filing a linked supplement is
-  closer to how such a form really works than editing it in place would be.
+- **Immutability, reversed.** A filed report was immutable, on the grounds
+  that amending one by filing a linked supplement is closer to how such a form
+  really works than editing it in place. The product owner asked for editing
+  and deleting instead, so that is what this now does. The original reasoning
+  still stands, and a supplement model remains the better answer if this is
+  ever revisited — what was given up is the guarantee that a filed report says
+  today what it said when it was filed, and `amendedAt` is a stamp, not an
+  audit trail: it records that a report changed, never what it said before.

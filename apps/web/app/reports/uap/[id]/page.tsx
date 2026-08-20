@@ -1,7 +1,7 @@
 "use client";
 
 import { UAP_FIELD_NAMES, UAP_LABELS, UAP_OPTION_LABELS } from "@school/shared";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { FormErrors } from "../../../../components/FormErrors";
 import { RequireAuth } from "../../../../components/RequireAuth";
@@ -34,10 +34,29 @@ export default function UapReportPage() {
 
 function FiledReport() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const justFiled = searchParams.get("filed") === "1";
+  const justSaved = searchParams.get("saved") === "1";
   const [report, setReport] = useState<UapReport | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // Deleting is irreversible and there is no undo, so the button asks first
+  // rather than acting on one click.
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function onDelete() {
+    setDeleting(true);
+    setMessage(null);
+    try {
+      await apiFetch(`/reports/uap/${params.id}`, { method: "DELETE" });
+      router.push("/reports/uap");
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "Something went wrong");
+      setDeleting(false);
+      setConfirming(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -64,18 +83,61 @@ function FiledReport() {
       <p className="mb-4 text-sm">
         <a href="/reports/uap" className="text-accent">&larr; All reports</a>
       </p>
-      {justFiled && (
+      {(justFiled || justSaved) && (
         <p
           role="status"
           className="mb-6 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
         >
-          Report {report.caseNumber} has been filed.
+          Report {report.caseNumber} has been {justSaved ? "amended" : "filed"}.
         </p>
       )}
+      <FormErrors message={message} />
       <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-text-muted">
         Form FD-302-UAP
       </p>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-text">{report.caseNumber}</h1>
+      <h1 className="mb-2 text-2xl font-semibold tracking-tight text-text">{report.caseNumber}</h1>
+      <p className="mb-4 text-sm text-text-muted">
+        Filed {report.createdAt.slice(0, 10)}
+        {report.amendedAt && ` · amended ${report.amendedAt.slice(0, 10)}`}
+      </p>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <a
+          href={`/reports/uap/${report.id}/edit`}
+          className="inline-flex items-center justify-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:text-accent"
+        >
+          Edit
+        </a>
+        {confirming ? (
+          <>
+            <span className="text-sm text-text">Delete this report permanently?</span>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={deleting}
+              className="inline-flex items-center justify-center rounded-md bg-danger px-3 py-1.5 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {deleting ? "Deleting…" : "Yes, delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              disabled={deleting}
+              className="inline-flex items-center justify-center rounded-md border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:text-accent"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="inline-flex items-center justify-center rounded-md border border-danger px-3 py-1.5 text-sm font-medium text-danger transition-colors"
+          >
+            Delete
+          </button>
+        )}
+      </div>
 
       <dl className="divide-y divide-border rounded-card border border-border bg-surface shadow-card">
         {UAP_FIELD_NAMES.map((field) => {

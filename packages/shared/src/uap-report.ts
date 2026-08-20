@@ -537,3 +537,23 @@ export function validateUapDraft(draft: UapReportDraft): UapValidationResult {
   if (result.success) return { ok: true, value: result.data };
   return { ok: false, fieldErrors: toFieldErrors(result.error) };
 }
+
+/**
+ * The inverse of the stored transform: a filed report, back in the shape the
+ * form edits. A stored report holds nulls for the fields that did not apply
+ * and numbers for the two integer fields, while a draft holds only strings,
+ * arrays and booleans — so an absent value becomes the blank the form started
+ * from rather than the string "null".
+ */
+export function toDraft(report: Partial<Record<UapFieldName, unknown>>): UapReportDraft {
+  const draft: Record<string, unknown> = { ...emptyUapReportDraft };
+  for (const field of UAP_FIELD_NAMES) {
+    const value = report[field];
+    if (value === null || value === undefined) continue;
+    const blank = emptyUapReportDraft[field];
+    if (typeof blank === "boolean") draft[field] = Boolean(value);
+    else if (Array.isArray(blank)) draft[field] = Array.isArray(value) ? value.map(String) : [];
+    else draft[field] = String(value);
+  }
+  return draft as UapReportDraft;
+}

@@ -8,6 +8,7 @@ import { PrismaService } from "../prisma/prisma.service";
 export interface UapReportView extends UapReportValues {
   id: string;
   createdAt: string;
+  amendedAt: string | null;
 }
 
 /** What the list page needs, and no more. */
@@ -61,7 +62,24 @@ function toView(report: UapReport): UapReportView {
     additionalRemarks: report.additionalRemarks,
     certified: report.certified,
     createdAt: report.createdAt.toISOString(),
+    amendedAt: report.amendedAt ? report.amendedAt.toISOString() : null,
   };
+}
+
+function toWriteError(error: unknown): unknown {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return new AppError("CASE_NUMBER_TAKEN", "Check the highlighted fields", 409, {
+        caseNumber: ["That case number is already on file."],
+      });
+    }
+    // The row went away between the ownership check and the write — a
+    // concurrent delete by the same agent. It is gone, not forbidden.
+    if (error.code === "P2025") {
+      return new AppError("NOT_FOUND", "No such report", 404);
+    }
+  }
+  return error;
 }
 
 @Injectable()
@@ -85,12 +103,39 @@ export class ReportsService {
       });
       return toView(report);
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        throw new AppError("CASE_NUMBER_TAKEN", "Check the highlighted fields", 409, {
-          caseNumber: ["That case number is already on file."],
-        });
-      }
-      throw error;
+      throw toWriteError(error);
+    }
+  }
+
+  /**
+   * A full replacement rather than a partial patch: the form loads the whole
+   * report, so it sends the whole report back, and one schema validates a
+   * saved amendment exactly as it validates a first filing.
+   */
+  async update(userId: string, id: string, input: UapReportValues): Promise<UapReportView> {
+    await this.get(userId, id);
+    try {
+      const report = await this.prisma.uapReport.update({
+        where: { id },
+        data: {
+          ...input,
+          sightingDate: toDay(input.sightingDate),
+          reportFiledDate: toDay(input.reportFiledDate),
+          amendedAt: new Date(),
+        },
+      });
+      return toView(report);
+    } catch (error) {
+      throw toWriteError(error);
+    }
+  }
+
+  async remove(userId: string, id: string): Promise<void> {
+    await this.get(userId, id);
+    try {
+      await this.prisma.uapReport.delete({ where: { id } });
+    } catch (error) {
+      throw toWriteError(error);
     }
   }
 
