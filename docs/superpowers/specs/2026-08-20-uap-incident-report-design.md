@@ -32,7 +32,7 @@ In scope:
 - Three web routes: a list, the form, and a read-only view of a filed report.
 - A set of reusable form controls — select, textarea, checkbox, checkbox
   group, radio group, date — alongside the existing `Field` component.
-- Spec clauses added to `docs/spec.md`, and tests at all four levels.
+- Spec clauses added to `docs/spec.md`.
 
 Out of scope, deliberately:
 
@@ -46,6 +46,12 @@ Out of scope, deliberately:
 - **Refactoring `AddressForm`.** It duplicates field markup instead of using
   `Field`. That is a real wart, but it is not code this work touches, and
   changing it would put unrelated diffs in front of a learner.
+- **A test plan.** Deciding what to test, at which level, and with which
+  values is the exercise this section exists for, so this document does not
+  do it. The clauses in section 13 state the behaviour precisely enough that
+  each one can be checked by observation; choosing the observations is the
+  reader's job. `docs/testing-guide.md` covers what each of the four levels
+  is for and how to run them.
 
 ## 3. Vocabulary
 
@@ -145,7 +151,7 @@ what the agent reads.
 | `additionalRemarks` | textarea | no | 1000 | — |
 | `certified` | checkbox | yes | — | "I certify that this report is accurate to the best of my knowledge." Must be checked; an unchecked box is a validation error, not a disabled button. |
 
-### 4.6 Coverage summary
+### 4.6 The roster at a glance
 
 | Control type | Count | Fields |
 |---|---|---|
@@ -532,8 +538,8 @@ identifies a case in the Bureau, not in one agent's folder.
 
 The seed script gains two reports for `admin@example.com`: one minimal CE-1
 with no evidence, and one maximal CE-4 with every conditional field filled,
-so that the list and detail pages have something to show and so browser tests
-have a known row to read.
+so that the list and detail pages have something to show on a freshly seeded
+database.
 
 ## 10. API
 
@@ -702,109 +708,24 @@ UAP-22   A successful filing returns 201 and shows the filed report read-only,
          confirming the case number.
 ```
 
-## 14. Test plan
-
-The four levels are used for what each is for, as `docs/testing-guide.md`
-describes.
-
-### 14.1 Shared unit tests — `packages/shared/src/uap-report.spec.ts`
-
-The bulk of the validation coverage belongs here, because the rules are a
-pure function of a draft.
-
-- Boundary values on every band: 2 characters rejected, 3 accepted, 255
-  accepted, 256 rejected; 1000 accepted, 1001 rejected.
-- `"   "` rejected as empty for a required field, accepted for an optional one.
-- `"  ok  "` rejected, because it is 2 characters after trimming.
-- An emoji counts as one character, so 255 emoji fit in a 255 field.
-- The full conditional matrix: for each of the eleven conditional entries in
-  section 5.1, a draft that satisfies the condition demands the field and a
-  draft that does not accepts its absence.
-- `physicalEffects` accepted empty for CE-1 and rejected empty for CE-2, CE-3
-  and CE-4 — the requiredness flip, tested in both directions.
-- A value supplied for an inapplicable field normalises to `null`.
-- Date rules: a future sighting date, a future report date, a report date one
-  day before the sighting date, and the same date for both (accepted).
-- The case number pattern, accepting `UAP-2026-0042` and rejecting
-  `uap-2026-0042`, `UAP-26-0042` and `UAP-2026-42`.
-- `toFieldErrors` groups several failures on one field into one array.
-
-Expected values are written out by hand, never computed by calling the schema
-the test is checking.
-
-### 14.2 API integration tests — `apps/api/test/uap-reports.e2e-spec.ts`
-
-- `POST` with a valid maximal draft returns 201 and the row is in the
-  database with every conditional value stored.
-- `POST` with a valid minimal CE-1 draft stores `null` for every conditional
-  field.
-- `POST` with values supplied for inapplicable fields succeeds and stores
-  `null` for them.
-- `POST` with an invalid draft returns 400, and the assertion is on the
-  specific keys and messages in `fieldErrors`, not only on the status.
-- `POST` with a case number that already exists returns 409 with
-  `fieldErrors.caseNumber`.
-- Each of the three routes without a token returns 401.
-- `GET /reports/uap` returns only the caller's reports.
-- `GET /reports/uap/:id` for another user's report returns 403.
-
-### 14.3 Component tests — `apps/web/tests/uap-report-form.test.tsx`
-
-Queried by label and by role, never by test id.
-
-- Nothing is marked invalid on first render, even with every field empty.
-- Submitting an empty form fires no `fetch`, marks every required field, and
-  renders a summary naming the count.
-- Focus lands on the first invalid field.
-- Fixing one field after a failed submit removes its message and decrements
-  the summary count, without a second submit.
-- Selecting "Other" reveals the shape field; selecting something else hides it
-  and discards what was typed.
-- Checking and then unchecking "physical debris" discards the custody chain,
-  and re-checking shows it empty.
-- Moving the encounter classification from CE-1 to CE-2 makes an empty
-  physical-effects field invalid on the next submit; moving back to CE-1
-  makes it valid again and keeps the text.
-- Typing 1001 characters into the narrative shows the over-limit message and
-  the counter in its error state, and the textarea accepted all 1001.
-- The submit button is enabled while the form is invalid, and disabled with
-  the label `Filing…` while a submission is in flight.
-- An API `400` renders the same way a local failure does.
-
-### 14.4 Browser tests — `e2e/uap-report.spec.ts`
-
-- Sign in, open `/reports/uap/new`, fill a minimal valid report, file it, and
-  land on the detail page showing the case number.
-- Sign in, submit an empty form, and see the summary, the field messages and
-  the focused first field.
-- Fill a CE-4 report with debris evidence and civilian witnesses, checking
-  that each conditional field appears as its trigger is set, and that the
-  filed report shows them all.
-
-Assertions are web-first; no fixed sleeps. Each run generates its own case
-number so repeated runs do not collide on the unique constraint, the way
-`e2e/auth.spec.ts` already generates its own registration address.
-
-## 15. Implementation order
+## 14. Implementation order
 
 This design is larger than one sitting, and it has two clean seams. It should
-become three implementation plans, executed in this order, each of which ends
-with a green suite:
+become three implementation plans, executed in this order:
 
-1. **The shared schema.** `packages/shared/src/uap-report.ts` and its unit
-   tests, plus moving `toFieldErrors` out of `ZodValidationPipe` and into the
-   shared package. Nothing else depends on a decision made later, and section
-   14.1 is the largest single block of test coverage in the feature.
-2. **The API.** The Prisma model and migration, `ReportsModule`, the seed
-   rows, and the integration tests. Depends on stage 1 for its schema and on
-   nothing in the web tier.
-3. **The web tier.** The field components, the form, the three routes, the
-   header link, and the component and browser tests. Depends on both earlier
-   stages, and is the only stage that can be judged by looking at it.
+1. **The shared schema.** `packages/shared/src/uap-report.ts`, plus moving
+   `toFieldErrors` out of `ZodValidationPipe` and into the shared package.
+   Nothing in it depends on a decision made later, and both stages below
+   depend on all of it.
+2. **The API.** The Prisma model and migration, `ReportsModule`, and the seed
+   rows. Depends on stage 1 for its schema and on nothing in the web tier.
+3. **The web tier.** The field components, the form, the three routes and the
+   header link. Depends on both earlier stages, and is the only stage that
+   can be judged by looking at it.
 
-Splitting anywhere else means a stage that cannot be tested on its own.
+Splitting anywhere else produces a stage that cannot be exercised on its own.
 
-## 16. Decisions worth revisiting later
+## 15. Decisions worth revisiting later
 
 These were settled deliberately and cheaply, and none of them is load-bearing
 for the rest of the design:
