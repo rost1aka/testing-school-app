@@ -23,12 +23,6 @@ export default function HomePage() {
             >
               Your profile
             </a>
-            <a
-              href="/addresses"
-              className="inline-flex items-center justify-center rounded-card border border-border bg-surface px-4 py-2 text-sm font-medium text-text shadow-card transition-colors hover:text-accent"
-            >
-              Your addresses
-            </a>
           </div>
         </>
       ) : (
