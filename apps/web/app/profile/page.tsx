@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { AddressesPanel } from "../../components/AddressesPanel";
 import { ProfileForm } from "../../components/ProfileForm";
 import { RequireAuth } from "../../components/RequireAuth";
 
@@ -14,6 +15,10 @@ export default function ProfilePage() {
             <div>
               <p className="mb-4 text-sm text-text-muted">{profile.email}</p>
               <ProfileForm profile={profile} />
+              <section className="mt-10">
+                <h2 className="mb-4 text-xl font-semibold tracking-tight text-text">Addresses</h2>
+                <AddressesPanel />
+              </section>
             </div>
           )}
         </RequireAuth>

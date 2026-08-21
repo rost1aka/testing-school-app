@@ -71,11 +71,11 @@ describe("HomePage", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(profile.name);
   });
 
-  it("signed in: shows links to the profile and the addresses", () => {
+  it("signed in: links to the profile, which now holds the addresses too", () => {
     useSessionMock.mockReturnValue({ profile, loading: false, refresh: vi.fn(), signOut: vi.fn() });
     render(<HomePage />);
     expect(screen.getByRole("link", { name: "Your profile" })).toHaveAttribute("href", "/profile");
-    expect(screen.getByRole("link", { name: "Your addresses" })).toHaveAttribute("href", "/addresses");
+    expect(screen.queryByRole("link", { name: "Your addresses" })).not.toBeInTheDocument();
   });
 
   // Previously this state rendered a lone "School App" heading, which looks

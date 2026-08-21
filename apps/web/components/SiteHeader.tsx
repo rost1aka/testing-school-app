@@ -49,16 +49,14 @@ export function SiteHeader() {
             </div>
           ) : profile ? (
             <>
-              <a href="/profile" className="hover:text-accent">
-                Profile
-              </a>
-              <a href="/addresses" className="hover:text-accent">
-                Addresses
-              </a>
               <a href="/reports/uap" className="hover:text-accent">
                 Reports
               </a>
-              <span className="text-text">{profile.name}</span>
+              {/* The name is the way to the account: it carries the profile
+                  and, since they were merged, the addresses with it. */}
+              <a href="/profile" className="text-text hover:text-accent">
+                {profile.name}
+              </a>
               <button
                 type="button"
                 onClick={onSignOut}
