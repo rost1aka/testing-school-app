@@ -48,7 +48,7 @@ Keep it to hand — the next step asks for it. Treat it as a password: it is one
    |---|---|---|
    | `school-api` | `DATABASE_URL` | the Neon string from step 1 |
    | `school-api` | `APP_URL` | `https://school-web.onrender.com` |
-   | `school-web` | `NEXT_PUBLIC_API_URL` | `https://school-api.onrender.com` |
+   | `school-web` | `API_ORIGIN` | `https://school-api.onrender.com` |
 
    `JWT_SECRET` is not on this list: Render generates it and you never see it,
    which is the point.
@@ -66,12 +66,14 @@ nowhere.
 Once both services are live, check the URL shown at the top of each service's
 page. If either differs from what you entered:
 
-1. Correct `APP_URL` on `school-api` and/or `NEXT_PUBLIC_API_URL` on
-   `school-web`.
-2. **Redeploy `school-web` rather than restarting it.** Next.js inlines
-   `NEXT_PUBLIC_*` variables into the browser bundle when it *builds*, so a
-   restart keeps serving a bundle that still holds the old URL. Use **Manual
-   Deploy → Deploy latest commit**.
+1. Correct `APP_URL` on `school-api` and/or `API_ORIGIN` on `school-web`.
+2. **Redeploy `school-web` rather than restarting it.** Next.js reads the
+   config — and inlines `NEXT_PUBLIC_*` into the browser bundle — when it
+   *builds*, so a restart keeps serving a bundle and a proxy that still hold
+   the old URL. Use **Manual Deploy → Deploy latest commit**.
+
+`NEXT_PUBLIC_API_URL` is not on that list: it is the relative `/api` and never
+names a host, so a suffixed hostname cannot break it.
 
 `school-api` reads `APP_URL` at runtime, so a restart is enough there.
 
@@ -89,9 +91,20 @@ successful registration that lands you signed-in proves the whole chain: the
 web app reached the API, the API reached Neon, and the browser accepted the
 session cookies.
 
-If registration appears to succeed but leaves you signed out, the cookies were
-rejected — check that `CROSS_SITE_COOKIES` is `true` on `school-api` and that
-`APP_URL` exactly matches the web app's URL, scheme included.
+If registration appears to succeed but leaves you signed out, the cookies never
+came back. Check, in this order:
+
+1. `API_ORIGIN` on `school-web` exactly matches the API's URL, scheme included,
+   and `school-web` was **redeployed** after any change to it. A wrong value
+   makes every `/api/*` request 404 against the web service.
+2. `SECURE_COOKIES` is `true` on `school-api`. Without it the cookies are sent
+   without `Secure`, which a browser will not store from an HTTPS page.
+3. `CROSS_SITE_COOKIES` is **not** set on `school-api`. It puts the session
+   cookies back to `SameSite=None`, which makes them third-party — dropped by
+   default in Safari and every iOS browser, in Brave, and in any Chrome
+   profile with third-party cookies blocked. The signature of that mistake is
+   sign-in working in one browser and silently failing in another *on the same
+   machine*, which reads like an app bug and is not one.
 
 ## 5. Fill the shop
 
@@ -211,8 +224,8 @@ deploy` at the front of its start command does — and, while
 `SEED_CATALOGUE_ON_BOOT` is `"true"`, tops the catalogue up as well, so a
 deploy that adds or reprices products needs nothing else from you.
 
-Changing `NEXT_PUBLIC_API_URL` remains the one case that needs a redeploy
-rather than a restart, for the build-time reason given in step 3.
+Changing `API_ORIGIN` remains the one case that needs a redeploy rather than a
+restart, for the build-time reason given in step 3.
 
 ## What this deployment does not have
 

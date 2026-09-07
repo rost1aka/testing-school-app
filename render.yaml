@@ -59,11 +59,20 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      # school-web.onrender.com and school-api.onrender.com are different
-      # *sites* to a browser — onrender.com is on the Public Suffix List — so
-      # the session cookies need SameSite=None; Secure or sign-in silently
-      # fails. See apps/api/src/common/config.ts.
-      - key: CROSS_SITE_COOKIES
+      # The browser never calls this service directly: school-web proxies
+      # /api/* to it, so the session cookies come back on the web app's own
+      # origin and are first-party. That is deliberate — the two services are
+      # different *sites* to a browser (onrender.com is on the Public Suffix
+      # List), and cookies set across sites are third-party ones that Safari,
+      # every iOS browser, Brave, and any Chrome profile with third-party
+      # cookies blocked will silently drop, leaving sign-in working on some
+      # machines and not others.
+      #
+      # So: SameSite=Lax (the default), plus Secure because this is HTTPS.
+      # Do NOT set CROSS_SITE_COOKIES here — that is for a deployment that
+      # exposes the API to the browser directly, and it reintroduces exactly
+      # the problem above. See apps/api/src/common/config.ts.
+      - key: SECURE_COOKIES
         value: "true"
       # This deployment is a demonstration whose catalogue is whatever the
       # code says it is, so it is seeded on every boot. Turn this off (or drop
@@ -96,8 +105,16 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # https://school-api.onrender.com. Next.js inlines NEXT_PUBLIC_* into the
-      # client bundle at BUILD time, so changing this needs a redeploy, not a
-      # restart.
+      # Relative on purpose: the browser calls this service, which proxies
+      # /api/* on to school-api (see apps/web/next.config.ts). That keeps the
+      # session cookies first-party. It is a constant rather than a prompted
+      # value because it no longer names a host — nothing to correct when
+      # Render appends a suffix to the API's hostname.
       - key: NEXT_PUBLIC_API_URL
+        value: /api
+      # https://school-api.onrender.com — where the proxy forwards to. Read on
+      # the server at build and boot, so it is NOT inlined into the client
+      # bundle. Next.js does inline NEXT_PUBLIC_* at BUILD time, so changing
+      # either of these needs a redeploy, not a restart.
+      - key: API_ORIGIN
         sync: false
