@@ -25,4 +25,18 @@ describe("cookieSecurity", () => {
   it("keeps same-site, insecure cookies for local development over plain HTTP", () => {
     expect(cookieSecurity({})).toEqual({ sameSite: "lax", secure: false });
   });
+
+  it("keeps SameSite=Lax but adds Secure when the API is proxied under the web app's origin", () => {
+    expect(cookieSecurity({ SECURE_COOKIES: "true" })).toEqual({
+      sameSite: "lax",
+      secure: true,
+    });
+  });
+
+  it("stays cross-site when both flags are set, since SameSite=None is the stricter requirement", () => {
+    expect(cookieSecurity({ CROSS_SITE_COOKIES: "true", SECURE_COOKIES: "true" })).toEqual({
+      sameSite: "none",
+      secure: true,
+    });
+  });
 });

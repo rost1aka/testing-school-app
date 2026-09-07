@@ -19,6 +19,7 @@ describe("session cookie security attributes", () => {
   // here would change how every later case in this file behaves.
   afterEach(() => {
     delete process.env.CROSS_SITE_COOKIES;
+    delete process.env.SECURE_COOKIES;
   });
 
   async function loginCookies(): Promise<string[]> {
@@ -66,6 +67,24 @@ describe("session cookie security attributes", () => {
     // back, so every request looks like a brand new visitor with no cart.
     expect(cartCookie).toMatch(/SameSite=None/i);
     expect(cartCookie).toMatch(/;\s*Secure/i);
+  });
+
+  it("marks the cookies SameSite=Lax and Secure when the API is proxied under the web app's origin", async () => {
+    // The deployed shape: school-web proxies /api/* here, so the browser sees
+    // one origin and the cookies are first-party. Lax is then correct, and
+    // Secure is required because a browser will not store a cookie without it
+    // from an HTTPS page. Crucially this is *not* SameSite=None: a
+    // third-party cookie is one Safari, iOS, Brave and a Chrome profile with
+    // third-party cookies blocked would each be free to drop.
+    process.env.SECURE_COOKIES = "true";
+
+    const cookies = await loginCookies();
+
+    expect(cookies).toHaveLength(2);
+    for (const cookie of cookies) {
+      expect(cookie).toMatch(/SameSite=Lax/i);
+      expect(cookie).toMatch(/;\s*Secure/i);
+    }
   });
 
   it("keeps the cookies SameSite=Lax and insecure for same-site local development", async () => {
